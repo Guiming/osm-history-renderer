@@ -4,8 +4,8 @@
 #
 #------------------------------------------------------------------------------
 
-#CXX = g++
-CXX = clang++
+CXX = g++
+#CXX = clang++
 
 CXXFLAGS = -std=c++14 -g -O3 -Wall -Wextra -pedantic
 
@@ -14,7 +14,7 @@ CXXFLAGS += `getconf LFS_CFLAGS`
 #CXXFLAGS += -Wpadded -Winline
 
 # path to includes
-CXXFLAGS += -I/usr/include/postgresql/ -I/usr/include/libxml2/
+CXXFLAGS += -I/usr/include/postgresql/ -I/usr/include/libxml2/ -I/usr/local/geos-3.11.4/include -L/usr/local/geos-3.11.4/lib
 
 # compile & link against expat to have xml reading support
 LDFLAGS += -lexpat -lbz2
