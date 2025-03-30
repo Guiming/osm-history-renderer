@@ -1,13 +1,12 @@
 -- requires hstore_new, postgis, gist_btree
 
 DROP TABLE IF EXISTS hist_point CASCADE;
-CREATE TABLE IF NOT EXISTS hist_point (
+CREATE TABLE hist_point (
     id bigint,
     version smallint,
     visible boolean,
     user_id integer,
     user_name text,
-    changeset bigint,
     valid_from timestamp without time zone,
     valid_to timestamp without time zone,
     tags hstore,
@@ -15,14 +14,13 @@ CREATE TABLE IF NOT EXISTS hist_point (
 );
 
 DROP TABLE IF EXISTS hist_line CASCADE;
-CREATE TABLE IF NOT EXISTS hist_line (
+CREATE TABLE hist_line (
     id bigint,
     version smallint,
     minor smallint,
     visible boolean,
     user_id integer,
     user_name text,
-    changeset bigint,
     valid_from timestamp without time zone,
     valid_to timestamp without time zone,
     tags hstore,
@@ -31,14 +29,13 @@ CREATE TABLE IF NOT EXISTS hist_line (
 );
 
 DROP TABLE IF EXISTS hist_polygon CASCADE;
-CREATE TABLE IF NOT EXISTS hist_polygon (
+CREATE TABLE hist_polygon (
     id bigint,
     version smallint,
     minor smallint,
     visible boolean,
     user_id integer,
     user_name text,
-    changeset bigint,
     valid_from timestamp without time zone,
     valid_to timestamp without time zone,
     tags hstore,
