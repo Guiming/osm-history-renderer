@@ -74,20 +74,20 @@ def main():
     if options.size:
         try:
             options.size = map(int, options.size.split("x"))
-        except ValueError, err:
-            print "invalid syntax in size argument"
-            print
+        except ValueError as err:
+            print("invalid syntax in size argument")
+            print()
             parser.print_help()
             sys.exit(1)
     
     if options.bbox:
         try:
-            options.bbox = map(float, options.bbox.split(","))
+            options.bbox = list(map(float, options.bbox.split(",")))
             if len(options.bbox) < 4:
                 raise ValueError
-        except ValueError, err:
-            print "invalid syntax in bbox argument"
-            print
+        except ValueError as err:
+            print("invalid syntax in bbox argument")
+            print()
             parser.print_help()
             sys.exit(1)
     
@@ -100,7 +100,7 @@ def main():
         except ValueError:
             options.anistart = datetime.strptime(options.anistart, "%Y-%m-%d")
     else:
-        print "infering animation start date from database..."
+        print("infering animation start date from database...")
         options.anistart = infer_anistart(options.dsn, options.dbprefix, options.bbox)
     
     if options.anistart is None:
@@ -121,14 +121,14 @@ def main():
     
     options.anistep = relativedelta(**args)
     
-    print "rendering animation from %s to %s in %s steps from bbox %s in style %s to '%s' in size %ux%u\n" % (options.anistart, options.aniend, options.anistep, options.bbox, options.style, options.file, options.size[0], options.size[1])
+    print("rendering animation from %s to %s in %s steps from bbox %s in style %s to '%s' in size %ux%u\n" % (options.anistart, options.aniend, options.anistep, options.bbox, options.style, options.file, options.size[0], options.size[1]))
     
     anifile = options.file
     date = options.anistart
     buildhtml = False
     
     if os.path.exists(anifile) or os.path.exists(anifile+".html"):
-        print "the output-folder %s or the output-file output-folder %s exists. remove or rename both of them or give another target-name with the --file option" % (anifile, anifile+".html")
+        print("the output-folder %s or the output-file output-folder %s exists. remove or rename both of them or give another target-name with the --file option" % (anifile, anifile+".html"))
         sys.exit(0)
     
     os.mkdir(anifile)
@@ -140,13 +140,13 @@ def main():
         options.type = "png"
         options.file = "%s/%010d" % (anifile, i)
         
-        print date
+        print(date)
         render.render(options)
         
         if(options.label):
             opts = ["mogrify", "-gravity", options.labelgravity, "-draw", "fill 'Black'; font-size 18; text 0,10 '%s'" % (date.strftime(options.label)), options.file]
             if(0 != os.spawnvp(os.P_WAIT, "gm", opts)):
-                print "error launching gm - is GraphicsMagick missing?"
+                print("error launching gm - is GraphicsMagick missing?")
         
         date = date + options.anistep
         i += 1
@@ -165,9 +165,9 @@ def infer_anistart(dsn, prefix, bbox):
     cur.execute(sql)
     (min,) = cur.fetchone()
     if min is None:
-        print "unable to infer animation start date. does your database contain data in that area?"
+        print("unable to infer animation start date. does your database contain data in that area?")
     else:
-        print "infered animation start date:", min.strftime("%Y-%m-%d %H:%M:%S")
+        print("infered animation start date:", min.strftime("%Y-%m-%d %H:%M:%S"))
     
     cur.close()
     con.close()

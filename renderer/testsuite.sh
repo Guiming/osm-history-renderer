@@ -20,3 +20,7 @@ STYLE=styles/osmorg/osmorg.xml
 ./render.py --style $STYLE --date $DATE --bbox 8.18106,49.77803,8.20466,49.79041 --zoom 16 --file 16
 ./render.py --style $STYLE --date $DATE --bbox 8.18696,49.78112,8.19876,49.78732 --zoom 17 --file 17
 ./render.py --style $STYLE --date $DATE --bbox 8.18991,49.782672,8.19581,49.785769 --zoom 18 --file 18
+
+#python render.py --style styles/osm-bright/OSMBright-hist.xml --date "2025-01-31 00:00:00" -D "host=localhost dbname=osm_history port=5432 user=postgres password=admin" --bbox 73.13579,4.04112,73.76681,4.35202 --zoom 13 --file 13 -v 1 -p hist_view
+
+#python render.py --style /home/guiming/osm/osm-flask/utils/osm-night/OSMNight-hist.xml --date "2025-01-31 00:00:00" -D "host=localhost dbname=osm_history port=5432 user=postgres password=admin" --bbox -105.37797,39.29801,-104.60069,40.07581 --zoom 12 --file 12 -v 1 -p hist_view

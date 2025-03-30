@@ -6,7 +6,7 @@
 import psycopg2
 from optparse import OptionParser
 import sys, os, subprocess
-import cStringIO
+import io
 import mapnik
 
 cairo_exists = True
@@ -68,20 +68,20 @@ def main():
     if options.size:
         try:
             options.size = map(int, options.size.split("x"))
-        except ValueError, err:
-            print "invalid syntax in size argument"
-            print
+        except ValueError as err:
+            print("invalid syntax in size argument")
+            print("\n")
             parser.print_help()
             sys.exit(1)
     
     if options.bbox:
         try:
-            options.bbox = map(float, options.bbox.split(","))
+            options.bbox = list(map(float, options.bbox.split(",")))
             if len(options.bbox) < 4:
                 raise ValueError
-        except ValueError, err:
-            print "invalid syntax in bbox argument"
-            print
+        except ValueError as err:
+            print("invalid syntax in bbox argument")
+            print("\n")
             parser.print_help()
             sys.exit(1)
     
@@ -89,17 +89,18 @@ def main():
         options.size = zoom2size(options.bbox, options.zoom);
     
     if not options.date:
-        print "--date is required for historic databases"
-        print
+        print("--date is required for historic databases")
+        print("\n")
         parser.print_help()
         sys.exit(1)
     
-    print "rendering bbox %s at date %s in style %s to file %s which is of type %s in size %ux%u\n" % (options.bbox, options.date, options.style, options.file, options.type, options.size[0], options.size[1])
+    print("rendering bbox %s at date %s in style %s to file %s which is of type %s in size %ux%u\n" % (options.bbox, options.date, options.style, options.file, options.type, options.size[0], options.size[1]))
     render(options)
 
 def render(options):
     # create view
     if(options.view):
+        print("options.view", options.view)
         columns = options.viewcolumns.split(',')
         if(options.extracolumns):
             columns += options.extracolumns.split(',')
@@ -126,7 +127,11 @@ def render(options):
         bbox = mapnik.Envelope(*options.bbox)
     
     # project bounds to map projection
-    e = mapnik.forward_(bbox, prj)
+    prj_merc = mapnik.Projection("+proj=merc +a=6378137 +b=6378137 +lat_ts=0.0 +lon_0=0.0 +x_0=0.0 +y_0=0 +k=1.0 +units=m +nadgrids=@null +no_defs +over")
+    prj_wgs = mapnik.Projection('+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs')
+    transform = mapnik.ProjTransform(prj_wgs, prj_merc)
+    e = transform.forward(mapnik.Box2d(*bbox))
+    #e = mapnik.forward_(bbox, prj)
     
     # zoom map to bounding box
     m.zoom_to_box(e)
@@ -145,8 +150,8 @@ def render(options):
         s = cairo.PSSurface(options.file, options.size[0], options.size[1])
     
     else:
-        print "invalid image type"
-        print
+        print("invalid image type")
+        print("\n")
         parser.print_help()
         sys.exit(1)
     
@@ -161,11 +166,15 @@ def render(options):
     
     if(options.view):
         drop_views(options.dsn, options.viewprefix)
+        #pass
     
 
 def zoom2size(bbox, zoom):
-    prj = mapnik.Projection("+proj=merc +a=6378137 +b=6378137 +lat_ts=0.0 +lon_0=0.0 +x_0=0.0 +y_0=0 +k=1.0 +units=m +nadgrids=@null +no_defs +over")
-    e = mapnik.forward_(mapnik.Box2d(*bbox), prj)
+    prj_merc = mapnik.Projection("+proj=merc +a=6378137 +b=6378137 +lat_ts=0.0 +lon_0=0.0 +x_0=0.0 +y_0=0 +k=1.0 +units=m +nadgrids=@null +no_defs +over")
+    prj_wgs = mapnik.Projection('+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs')
+    transform = mapnik.ProjTransform(prj_wgs, prj_merc)
+    e = transform.forward(mapnik.Box2d(*bbox))
+    print(e)
     wm = e.maxx - e.minx;
     hm = e.maxy - e.miny;
     
@@ -232,6 +241,7 @@ def zoom2size(bbox, zoom):
     return (wp, hp)
 
 def create_views(dsn, dbprefix, viewprefix, hstore, columns, date):
+    print("creating views", dsn)
     con = psycopg2.connect(dsn)
     cur = con.cursor()
     
@@ -239,24 +249,31 @@ def create_views(dsn, dbprefix, viewprefix, hstore, columns, date):
     for column in columns:
         columselect += "tags->'%s' AS \"%s\", " % (column, column)
     
+    #cur.execute("ALTER TABLE hist_point ADD COLUMN IF NOT EXISTS z_order integer;")
+    
+    #print(columselect)
     cur.execute("DELETE FROM geometry_columns WHERE f_table_catalog = '' AND f_table_schema = 'public' AND f_table_name IN ('%s_point', '%s_line', '%s_roads', '%s_polygon');" % (viewprefix, viewprefix, viewprefix, viewprefix))
     
-    cur.execute("DROP VIEW IF EXISTS %s_point" % (viewprefix))
-    cur.execute("CREATE OR REPLACE VIEW %s_point AS SELECT id AS osm_id, %s geom AS way FROM %s_point WHERE '%s' BETWEEN valid_from AND COALESCE(valid_to, '9999-12-31');" % (viewprefix, columselect, dbprefix, date))
-    cur.execute("INSERT INTO geometry_columns (f_table_catalog, f_table_schema, f_table_name, f_geometry_column, coord_dimension, srid, type) VALUES ('', 'public', '%s_point', 'way', 2, 3857, 'POINT');" % (viewprefix))
+    cur.execute("ALTER TABLE %s_point ADD COLUMN IF NOT EXISTS z_order integer;" % dbprefix)
     
+    cur.execute("DROP VIEW IF EXISTS %s_point" % (viewprefix))
+    sql = "CREATE OR REPLACE VIEW %s_point AS SELECT id AS osm_id, %s z_order, geom AS way FROM %s_point WHERE '%s' BETWEEN valid_from AND COALESCE(valid_to, '9999-12-31');" % (viewprefix, columselect, dbprefix, date)
+    #print(sql)
+    cur.execute(sql)
+    cur.execute("INSERT INTO geometry_columns (f_table_catalog, f_table_schema, f_table_name, f_geometry_column, coord_dimension, srid, type) VALUES ('', 'public', '%s_point', 'way', 2, 3857, 'POINT');" % (viewprefix))
+    print("point_view created")
     cur.execute("DROP VIEW IF EXISTS %s_line" % (viewprefix))
     cur.execute("CREATE OR REPLACE VIEW %s_line AS SELECT id AS osm_id, %s z_order, geom AS way FROM %s_line WHERE '%s' BETWEEN valid_from AND COALESCE(valid_to, '9999-12-31');" % (viewprefix, columselect, dbprefix, date))
     cur.execute("INSERT INTO geometry_columns (f_table_catalog, f_table_schema, f_table_name, f_geometry_column, coord_dimension, srid, type) VALUES ('', 'public', '%s_line', 'way', 2, 3857, 'LINESTRING');" % (viewprefix))
-    
+    print("line_view created")    
     cur.execute("DROP VIEW IF EXISTS %s_roads" % (viewprefix))
     cur.execute("CREATE OR REPLACE VIEW %s_roads AS SELECT id AS osm_id, %s z_order, geom AS way FROM %s_line WHERE '%s' BETWEEN valid_from AND COALESCE(valid_to, '9999-12-31');" % (viewprefix, columselect, dbprefix, date))
     cur.execute("INSERT INTO geometry_columns (f_table_catalog, f_table_schema, f_table_name, f_geometry_column, coord_dimension, srid, type) VALUES ('', 'public', '%s_roads', 'way', 2, 3857, 'LINESTRING');" % (viewprefix))
-    
+    print("roads_view created")    
     cur.execute("DROP VIEW IF EXISTS %s_polygon" % (viewprefix))
     cur.execute("CREATE OR REPLACE VIEW %s_polygon AS SELECT id AS osm_id, %s z_order, area AS way_area, geom AS way FROM %s_polygon WHERE '%s' BETWEEN valid_from AND COALESCE(valid_to, '9999-12-31');" % (viewprefix, columselect, dbprefix, date))
     cur.execute("INSERT INTO geometry_columns (f_table_catalog, f_table_schema, f_table_name, f_geometry_column, coord_dimension, srid, type) VALUES ('', 'public', '%s_polygon', 'way', 2, 3857, 'POLYGON');" % (viewprefix))
-    
+    print("polygons_view created")     
     con.commit()
     cur.close()
     con.close()
