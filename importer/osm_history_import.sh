@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Directory containing .osh.pbf files
-INPUT_DIR="/mnt/externalWD/Ubuntu/osm_data"
+INPUT_DIR="osm_data"
 # OSM History Importer command
 IMPORTER="./osm-history-importer"
 # Database connection string
