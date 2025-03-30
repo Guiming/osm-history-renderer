@@ -5,7 +5,7 @@ INPUT_DIR="/mnt/externalWD/Ubuntu/osm_data"
 # OSM History Importer command
 IMPORTER="./osm-history-importer"
 # Database connection string
-DSN="host=130.253.215.41 dbname='osm_history_planet' port=5432 user=postgres password='admin'"
+DSN="host = xxx.xxx.xxx.xxx dbname='xxxx' port=xxx user=xxx password='xxxx'"
 # Table prefix
 PREFIX="hist_planet_"
 
