@@ -92,11 +92,19 @@ public:
     /**
      * read a .sql-file and execute it
      */
-    void execfile(std::ifstream& f) {
+    void execfile(std::ifstream& f, const std::string& prefix) {
         // read the file
         std::string cmd((std::istreambuf_iterator<char>(f)),
                          std::istreambuf_iterator<char>());
 
+        // Replace "hist_" with the given prefix
+        const std::string target = "hist_";
+        size_t pos = 0;
+        while ((pos = cmd.find(target, pos)) != std::string::npos) {
+            cmd.replace(pos, target.length(), prefix);
+            pos += prefix.length(); // Move past the replaced part
+        }
+        
         // and execute it
         exec(cmd);
     }

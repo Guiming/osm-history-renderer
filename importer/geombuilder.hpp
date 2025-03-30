@@ -45,10 +45,9 @@ public:
     geos::geom::Geometry* forWay(const osmium::NodeRefList &nodes, osmium::Timestamp timestamp, bool looksLikePolygon) {
         // shorthand to the geometry factory
         geos::geom::GeometryFactory *f = geos_geometry_factory();
-
+        
         // pointer to coordinate vector
         std::vector<geos::geom::Coordinate> *c = new std::vector<geos::geom::Coordinate>();
-
         for (const auto& nr : nodes) {
             // was the node found in the store?
             bool found;
@@ -58,13 +57,10 @@ public:
             if (!found) {
                 continue;
             }
-
             double lon = info.lon, lat = info.lat;
-
             if (m_debug) {
                 std::cerr << "node #" << nr.ref() << " at tstamp " << timestamp.seconds_since_epoch() << " references node at POINT(" << std::setprecision(8) << lon << ' ' << lat << ")\n";
             }
-
             // create a coordinate-object and add it to the vector
             if (!m_keepLatLng) {
                 if (!Project::toMercator(&lon, &lat))
@@ -72,7 +68,7 @@ public:
             }
             c->push_back(geos::geom::Coordinate{lon, lat, geos::DoubleNotANumber});
         }
-
+        
         // if less then 2 nodes could be found in the store, no valid way
         // can be assembled and we need to skip it
         if (c->size() < 2) {
@@ -95,14 +91,16 @@ public:
                 geom = f->createPolygon(
                     f->createLinearRing(
                         f->getCoordinateSequenceFactory()->create(c)
-                    ).release(),
+                    ).release(), //.get(),
                     nullptr
                 );
             } else {
                 // build a linestring
+                
                 geom = f->createLineString(
                     f->getCoordinateSequenceFactory()->create(c)
-                ).release();
+                ).release(); //.get();
+
             }
         } catch (const geos::util::GEOSException& e) {
             if (m_showerrors) {
@@ -111,7 +109,6 @@ public:
             delete c;
             return nullptr;
         }
-
         // enforce srid
         if (geom) {
             geom->setSRID(3857);

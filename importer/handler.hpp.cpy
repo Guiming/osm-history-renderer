@@ -104,7 +104,6 @@ class ImportHandler : public osmium::diff_handler::DiffHandler {
             (cur.visible() ? 't' : 'f') << '\t' <<
             cur.uid() << '\t' <<
             DbCopyConn::escape_string(cur.user()) << '\t' <<
-            cur.changeset() << '\t' << // added by GZ
             valid_from << '\t' <<
             valid_to << '\t' <<
             HStore::format(cur.tags()) << '\t';
@@ -131,7 +130,6 @@ class ImportHandler : public osmium::diff_handler::DiffHandler {
         time_t valid_to = 0;
 
         std::vector<MinorTimesCalculator::MinorTimesInfo> *minor_times = nullptr;
-        
         if (cur.visible()) {
             if (!way.last()) {
                 if (cur.timestamp() > next.timestamp()) {
@@ -162,6 +160,7 @@ class ImportHandler : public osmium::diff_handler::DiffHandler {
         else if (!cur.visible()) {
             valid_to = valid_from;
         }
+
         // write the main way version
         write_way_to_db(
             way,
@@ -172,7 +171,6 @@ class ImportHandler : public osmium::diff_handler::DiffHandler {
             cur.uid(),
             cur.user(),
             cur.timestamp().seconds_since_epoch(),
-            cur.changeset(), //added by GZ
             valid_from,
             valid_to,
             cur.tags(),
@@ -212,7 +210,6 @@ class ImportHandler : public osmium::diff_handler::DiffHandler {
                     uid,
                     user,
                     t,
-                    cur.changeset(), //added by GZ
                     valid_from,
                     valid_to,
                     cur.tags(),
@@ -234,20 +231,16 @@ class ImportHandler : public osmium::diff_handler::DiffHandler {
         osmium::user_id_type user_id,
         const char* user_name,
         time_t timestamp,
-        osmium::changeset_id_type changeset_id,
         time_t valid_from,
         time_t valid_to,
         const osmium::TagList &tags,
         const osmium::NodeRefList &nodes
     ) {
-        
         if (m_debug) {
-            
             std::cerr << "forging geometry of way " << id << 'v' << version << '.' << minor << " at tstamp " << timestamp << "\n";
         }
-        
+
         geos::geom::Geometry* geom = nullptr;
-        
         if (visible) {
             bool looksLikePolygon = PolygonIdentifyer::looksLikePolygon(tags);
             geom = m_geom.forWay(nodes, timestamp, looksLikePolygon);
@@ -258,6 +251,7 @@ class ImportHandler : public osmium::diff_handler::DiffHandler {
                 return;
             }
         }
+
         // SPEED: sum up 64k of data, before sending them to the database
         // SPEED: instead of stringstream, which does dynamic allocation, use a fixed buffer and snprintf
         std::stringstream line;
@@ -268,7 +262,6 @@ class ImportHandler : public osmium::diff_handler::DiffHandler {
             (visible ? 't' : 'f') << '\t' <<
             user_id << '\t' <<
             DbCopyConn::escape_string(user_name) << '\t' <<
-            changeset_id << '\t' <<
             Timestamp::formatDb(valid_from) << '\t' <<
             Timestamp::formatDb(valid_to) << '\t' <<
             HStore::format(tags) << '\t' <<
@@ -399,7 +392,7 @@ public:
             throw std::runtime_error{"can't find 00-before.sql"};
         }
 
-        m_general.execfile(sqlfile,m_prefix);
+        m_general.execfile(sqlfile);
 
         m_point.open(m_dsn, m_prefix, "point");
         m_line.open(m_dsn, m_prefix, "line");
@@ -431,7 +424,7 @@ public:
             throw std::runtime_error{"can't find 99-after.sql"};
         }
 
-        m_general.execfile(sqlfile, m_prefix);
+        m_general.execfile(sqlfile);
 
         if (m_debug) {
             std::cerr << "disconnecting from database\n";
