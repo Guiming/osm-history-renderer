@@ -57,8 +57,8 @@ private:
      * Size of one allocated memory block
      */
     const static size_t BLOCK_SIZE = 512*1024*1024;
-    const static osmium::object_id_type EST_MAX_NODE_ID = 2^31; // soon 2^32
-    const static osmium::object_id_type NODE_BUFFER_STEPS = 2^16; // soon 2^32
+    const static osmium::object_id_type EST_MAX_NODE_ID = 1LL << 34; // soon 2^34  <- 2^31 // GZ: 2^34 doesn't work
+    const static osmium::object_id_type NODE_BUFFER_STEPS = 1LL << 16; // soon 2^32 <- 2^16 // GZ 2^16 doesn't work
 
     using memoryBlocks_t = std::vector<char*>;
     using memoryBlocks_cit = memoryBlocks_t::const_iterator;
