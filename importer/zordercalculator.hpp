@@ -125,8 +125,8 @@ public:
             z_order = 1000;
         }
 
-        if (z_order < 0){
-            z_order = 0;
+        if (z_order < -1000){
+            z_order = -1000;
         }
 
         return z_order;
