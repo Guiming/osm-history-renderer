@@ -59,7 +59,8 @@ CREATE TABLE IF NOT EXISTS hist_relation (
     changeset bigint,
     valid_from timestamp without time zone,
     valid_to timestamp without time zone,
-    tags hstore
+    tags hstore,
+    z_order integer
 );
 
 --DROP TABLE IF EXISTS hist_relation_member CASCADE;

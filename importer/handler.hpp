@@ -411,7 +411,8 @@ class ImportHandler : public osmium::diff_handler::DiffHandler {
             cur.changeset() << '\t' << // added by GZ
             valid_from << '\t' <<
             valid_to << '\t' <<
-            HStore::format(cur.tags());
+            HStore::format(cur.tags()) << '\t'
+            OrderCalculator::calculateZOrder(tags);
 
         line << '\n';
         m_relation.copy(line.str());
