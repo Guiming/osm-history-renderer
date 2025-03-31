@@ -49,7 +49,7 @@ CREATE TABLE IF NOT EXISTS hist_polygon (
 );
 
 /* GZ */
---DROP TABLE IF EXISTS hist_relation CASCADE;
+DROP TABLE IF EXISTS hist_relation CASCADE;
 CREATE TABLE IF NOT EXISTS hist_relation (
     id bigint,
     version smallint,
