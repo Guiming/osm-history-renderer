@@ -41,6 +41,11 @@ class ImportHandler : public osmium::diff_handler::DiffHandler {
     DbCopyConn m_line;
     DbCopyConn m_polygon;
 
+    // GZ
+    DbCopyConn m_relation;
+    DbCopyConn m_relation_member;
+    DbCopyConn m_user;
+
     geos::io::WKBWriter wkb;
 
     std::string m_dsn;
@@ -51,6 +56,36 @@ class ImportHandler : public osmium::diff_handler::DiffHandler {
     bool m_keepLatLng;
 
     std::map<osmium::user_id_type, std::string> m_username_map;
+
+    // GZ
+    void write_users(){
+        if (m_debug) {
+            std::cerr << "Inserting all user data from m_username_map to the database.\n";
+        }
+
+        int i = 0;
+        for (const auto& entry : m_username_map) {
+            osmium::user_id_type user_id = entry.first;
+            const char* user_name = entry.second.c_str();
+
+            if (m_debug) {
+                std::cerr << "Inserting user data for user_id: " << user_id << ", user_name: " << DbCopyConn::escape_string(user_name) << "\n";
+            }
+
+            // Construct the line to be written to the database
+            std::stringstream line;
+            line << user_id << '\t' << DbCopyConn::escape_string(user_name);
+
+            // Use m_user.copy() to write the user data to the database
+            line << '\n';
+            m_user.copy(line.str());
+            i += 1;
+        }
+        if (m_debug) {
+            std::cerr << "Inserted " << i << "users into the database.\n";
+        }
+
+    }
 
     void write_node(const osmium::DiffNode& node) {
         const auto& cur = node.curr();
@@ -103,7 +138,7 @@ class ImportHandler : public osmium::diff_handler::DiffHandler {
             cur.version() << '\t' <<
             (cur.visible() ? 't' : 'f') << '\t' <<
             cur.uid() << '\t' <<
-            DbCopyConn::escape_string(cur.user()) << '\t' <<
+            //DbCopyConn::escape_string(cur.user()) << '\t' <<
             cur.changeset() << '\t' << // added by GZ
             valid_from << '\t' <<
             valid_to << '\t' <<
@@ -267,7 +302,7 @@ class ImportHandler : public osmium::diff_handler::DiffHandler {
             minor << '\t' <<
             (visible ? 't' : 'f') << '\t' <<
             user_id << '\t' <<
-            DbCopyConn::escape_string(user_name) << '\t' <<
+            //DbCopyConn::escape_string(user_name) << '\t' <<
             changeset_id << '\t' <<
             Timestamp::formatDb(valid_from) << '\t' <<
             Timestamp::formatDb(valid_to) << '\t' <<
@@ -342,6 +377,74 @@ class ImportHandler : public osmium::diff_handler::DiffHandler {
         delete geom;
     }
 
+    void write_relation(const osmium::DiffRelation& relation) {
+        const auto& cur = relation.curr();
+
+        if (m_debug) {
+            std::cout << "relation n" << cur.id() << 'v' << cur.version() << " at tstamp " << cur.timestamp() << " (" << cur.timestamp().to_iso() << ")\n";
+        }
+
+        std::string valid_from{cur.timestamp().to_iso()};
+        std::string valid_to{"\\N"};
+
+        // if this is another version of the same entity, the end-timestamp of the current entity is the timestamp of the next one
+        if (!relation.last()) {
+            valid_to = relation.next().timestamp().to_iso();
+        }
+
+        // if the current version is deleted, it's end-timestamp is the same as its creation-timestamp
+        else if (!cur.visible()) {
+            valid_to = valid_from;
+        }
+
+        m_username_map.emplace(cur.uid(), cur.user());
+
+        // SPEED: sum up 64k of data, before sending them to the database
+        // SPEED: instead of stringstream, which does dynamic allocation, use a fixed buffer and snprintf
+        std::stringstream line;
+        line << std::setprecision(8) <<
+            cur.id() << '\t' <<
+            cur.version() << '\t' <<
+            (cur.visible() ? 't' : 'f') << '\t' <<
+            cur.uid() << '\t' <<
+            //DbCopyConn::escape_string(cur.user()) << '\t' <<
+            cur.changeset() << '\t' << // added by GZ
+            valid_from << '\t' <<
+            valid_to << '\t' <<
+            HStore::format(cur.tags());
+
+        line << '\n';
+        m_relation.copy(line.str());
+
+        // now write the relation members to the database
+        // Iterate over the members of the relation
+        for (const osmium::RelationMember& member : cur.members()) {
+            std::stringstream mline;
+            mline << std::setprecision(8) <<
+                cur.id() << '\t' <<
+                cur.version() << '\t' <<
+                member.ref() << '\t' <<
+                member_type_to_string(member.type()) << '\t' <<
+                member.role();
+
+            mline << '\n';
+            m_relation_member.copy(mline.str());
+        }
+    }
+
+private:
+    const char* member_type_to_string(osmium::item_type type) const {
+        switch (type) {
+            case osmium::item_type::node: return "node";
+            case osmium::item_type::way: return "way";
+            case osmium::item_type::relation: return "relation";
+            case osmium::item_type::undefined: return "undefined";
+            case osmium::item_type::area: return "area";
+            case osmium::item_type::changeset: return "changeset";
+            default: return "unknown";
+        }
+    }
+
 public:
     ImportHandler(Nodestore *nodestore):
             m_store(nodestore),
@@ -405,6 +508,11 @@ public:
         m_line.open(m_dsn, m_prefix, "line");
         m_polygon.open(m_dsn, m_prefix, "polygon");
 
+        // GZ
+        m_user.open(m_dsn, m_prefix, "user");
+        m_relation.open(m_dsn, m_prefix, "relation");
+        m_relation_member.open(m_dsn, m_prefix, "relation_member");
+
         wkb.setIncludeSRID(true);
     }
 
@@ -417,6 +525,18 @@ public:
 
         std::cerr << "closing polygon-table...\n";
         m_polygon.close();
+
+        // GZ
+        write_users();
+        std::cerr << "closing user-table...\n";
+        m_user.close();
+
+        std::cerr << "closing relation-table...\n";
+        m_relation.close(); 
+
+        std::cerr << "closing relation_member-table...\n";
+        m_relation_member.close();
+
 
         if (m_debug) {
             std::cerr << "running scheme/99-after.sql\n";
@@ -447,6 +567,12 @@ public:
     void way(const osmium::DiffWay& way) {
         m_sorttest.test(way.curr());
         write_way(way);
+    }
+
+    // GZ
+    void relation(const osmium::DiffRelation& relation) {
+        m_sorttest.test(relation.curr());
+        write_relation(relation);
     }
 
 };
