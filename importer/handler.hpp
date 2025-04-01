@@ -426,7 +426,7 @@ class ImportHandler : public osmium::diff_handler::DiffHandler {
                 cur.version() << '\t' <<
                 member.ref() << '\t' <<
                 member_type_to_string(member.type()) << '\t' <<
-                member.role();
+                escape_special_chars(member.role());
 
             mline << '\n';
             m_relation_member.copy(mline.str());
@@ -444,6 +444,16 @@ private:
             case osmium::item_type::changeset: return "changeset";
             default: return "unknown";
         }
+    }
+
+    std::string escape_special_chars(const std::string& input) {
+        std::string result;
+        result.reserve(input.size());
+        for (char c : input) {
+            if (c == '\\') result += "\\\\";
+            else result += c;
+        }
+        return result;
     }
 
 public:

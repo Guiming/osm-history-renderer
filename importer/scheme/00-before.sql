@@ -1,6 +1,6 @@
 -- requires hstore_new, postgis, gist_btree
 
---DROP TABLE IF EXISTS hist_point CASCADE;
+DROP TABLE IF EXISTS hist_point CASCADE;
 CREATE TABLE IF NOT EXISTS hist_point (
     id bigint,
     version smallint,
@@ -30,7 +30,7 @@ CREATE TABLE IF NOT EXISTS hist_line (
     geom geometry(LineString, 3857)
 );
 
---DROP TABLE IF EXISTS hist_polygon CASCADE;
+DROP TABLE IF EXISTS hist_polygon CASCADE;
 CREATE TABLE IF NOT EXISTS hist_polygon (
     id bigint,
     version smallint,
@@ -63,7 +63,7 @@ CREATE TABLE IF NOT EXISTS hist_relation (
     z_order integer
 );
 
---DROP TABLE IF EXISTS hist_relation_member CASCADE;
+DROP TABLE IF EXISTS hist_relation_member CASCADE;
 CREATE TABLE IF NOT EXISTS hist_relation_member (
     relation_id bigint,
     version smallint,
@@ -73,7 +73,7 @@ CREATE TABLE IF NOT EXISTS hist_relation_member (
     --PRIMARY KEY (relation_id, member_id, version) -- there might be duplicated (relation_id, member_id, version)
 );
 
---DROP TABLE IF EXISTS hist_user CASCADE;
+DROP TABLE IF EXISTS hist_user CASCADE;
 CREATE TABLE IF NOT EXISTS hist_user (
     user_id bigint PRIMARY KEY,
     user_name text
