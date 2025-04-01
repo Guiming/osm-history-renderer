@@ -184,7 +184,7 @@ CREATE TABLE hist_polygon_from_relation AS
 		R.user_id,
 		R.changeset,
 		R.valid_from AS valid_from,
-		NULL::timestamptz AS valid_to,
+		R.valid_to AS valid_to,
 		R.tags AS tags,
 		0 AS z_order,
 		NULL::real AS area,

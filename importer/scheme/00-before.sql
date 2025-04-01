@@ -14,7 +14,7 @@ CREATE TABLE IF NOT EXISTS hist_point (
     geom geometry(Point, 3857)
 );
 
---DROP TABLE IF EXISTS hist_line CASCADE;
+DROP TABLE IF EXISTS hist_line CASCADE;
 CREATE TABLE IF NOT EXISTS hist_line (
     id bigint,
     version smallint,
