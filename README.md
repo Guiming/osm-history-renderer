@@ -1,4 +1,8 @@
-# `new-osmium-geos` branch
+# `new-osmium-geos`: Guiming-specific branch notes
+
+> **Scope:** Everything in this first section is Guiming-specific documentation
+> for this fork. The original README inherited from joto's `new-osmium` branch
+> is preserved in a separately labeled section below.
 
 This historical branch combines joto's `new-osmium` importer modernization with
 additional importer, schema, and renderer work by Guiming. It is unmaintained,
@@ -32,7 +36,7 @@ Compared with joto's `master` branch, the shared `new-osmium` work:
 - added compatibility changes for newer GEOS releases, including the corrected
   transfer of GEOS smart-pointer ownership.
 
-## Additional changes in this branch
+## Guiming-specific changes
 
 Compared with joto's `new-osmium` branch, this branch:
 
@@ -71,6 +75,25 @@ Compared with joto's `new-osmium` branch, this branch:
 
 ---
 
+# Original upstream README
+
+> **Historical upstream content:** The text below is preserved from
+> [joto's `new-osmium` branch](https://github.com/joto/osm-history-renderer/tree/new-osmium).
+> It predates Guiming's fork-specific changes. Where it describes behavior that
+> differs from the current `new-osmium-geos` branch tip, the Guiming-specific
+> notes above take precedence.
+
+This branch contains a new version of the importer based on a current version
+of libosmium instead of the very old one of the master branch. You need
+libosmium and protozero installed.
+
+===
+
+# Unmaintained
+The osm-history-renderer is currently unmaintained and searching for a new Maintainer.
+
+===
+
 # OpenStreetMap History Renderer & Tools
 This Repository contains an experimental, work-in-progress (as everything in the OSM universe, i think ;)) history renderer. It is able to import a history excerpt (or a full history dump) of OpenStreetMap data and create an image from a specified region for a specific point in time. You may want to see berlin as it was in 2008? No Problem! The importer is written against [Jochen Topfs](https://github.com/joto) great osmium framework which provides history-capable readers for xml and pbf. If you want to try it, check out the [Tutorial](https://github.com/MaZderMind/osm-history-renderer/blob/master/TUTORIAL.md). An example of what can be accomplished with this tool and a little post-processing can be seen here: https://www.youtube.com/watch?v=-ZCI4wHOkAk ("10 años de ediciones Chile OpenStreetMap Time Lapse")
 
@@ -95,7 +118,7 @@ You can specify some options at the command line:
 
     ./osm-history-importer --nodestore sparse --debug --prefix "hist_" --dsn "host='172.16.0.73' dbname='histtest'" gau-odernheim.osh.pbf
 
-See the [libpq documentation](http://www.postgresql.org/docs/8.1/static/libpq.html#LIBPQ-CONNECT) for a detailed description of the DSN parameters. Relation versions and members are stored, but relation geometries are not built automatically because the relation-to-polygon SQL is disabled at this branch tip.
+See the [libpq documentation](http://www.postgresql.org/docs/8.1/static/libpq.html#LIBPQ-CONNECT) for a detailed descriptions of the dsn parameters. Beware: the importer does *not* honor relations right now, so no multipolygon-areas or routes in the database.
 
 After the import is completed, you can use the render.py and render-animation.py in the "rendering" directory. They work on regular osm styles, so you need to follow the usual preparations for those styles:
 
