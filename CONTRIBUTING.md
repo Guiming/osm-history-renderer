@@ -1,35 +1,81 @@
-How to contribute
-=================
-Thank you for wanting to contribute! This Project is Open-Source and it lives from People working together.
-If you're about to open an Issue, please read the following Section and if you find that it doesn't apply to you, then please go ahead and open an Issue or send in a PR, and I'll happily discuss it with you.
+# Contributing to the OSM History Viewer Modernization
 
+Thank you for your interest in contributing! This repository is part of the **OSM History Viewer** project and welcomes contributions from the community.
 
-The Issue-Tracker is for Issues with the Software
--------------------------------------------------
-It is no Support-Forum to ask for how to build or install a library.
-If you open an Issue, attach an reproducible Testcase and an explanation, where exactly the Software does something unexpected and what in your oppinion would be the correct result and why.
+## Project Lineage
 
+Before contributing, understand where this code comes from:
 
-I won't explain Linux to you
-----------------------------
-I will not explain you how to install or build software under Linux. There are tons of tutorials on the Internet. If the obvious ways don't work for you, please search for a local hacker-space and go there, because I will not remote-debug your Package-Management screwup.
+1. **Original project**: [`joto/osm-history-renderer`](https://github.com/joto/osm-history-renderer) (2016–2024) — The original OSM history importer/renderer by @joto
+2. **Community fork**: [`MaZderMind/osm-history-renderer`](https://github.com/MaZderMind/osm-history-renderer) — Extended with better documentation and features
+3. **This repo**: [`Guiming/osm-history-renderer`](https://github.com/Guiming/osm-history-renderer) — Modernization effort upgrading GEOS (3.10 → 3.15), libosmium (2.6+ → 2.23.1), Mapnik (3.x → 4.x), and PostgreSQL compatibility
 
+## Branch Purpose
 
-I will not help you with $library
----------------------------------
-If you have issues with installing or configuring postgres, postgis, libosmium, geos or one of the other libraries involved, please ask there. I have not worked with OSM/Geodata for years and have no knowledge of the recent chages and (in)compatibilities in your particular distribution.
-I will happily try to help you with querying the data or analyzing it.
+- `main` or default branch — Stable modernization target with tested dependencies
+- `upgrade/*` branches — Ongoing upgrade work-in-progress
 
+## How to Contribute
 
-But I'm a Student and have to finish $work
-------------------------------------------
-Yes, and this is the problem. Over the past 4 years I helped like two dozend students getting a VM up, installing the tools, building up their databases and querying some data.
-I have never seen one of them
- - Document their Setup-Procedure
- - Help other Students get their Setup up
- - Publish their Data, their Results or their VM-Images under an Open-Source-Licencse
- - Contribute Code or Features to the OSM-History-Tools
+### Reporting Issues
 
-And this is *not* how Open-Source works.
+Open an issue for:
+- Bugs that break functionality verified in the current branch
+- Compatibility findings (e.g., "this breaks with GEOS 3.14 but works with 3.15")
+- Documentation improvements
 
-If you write me an E-Mail or open an Issue which requests one of the above, I'll respond/close it with a Link to this Document.
+Attach a minimal reproducible test case when possible.
+
+### Submitting Pull Requests
+
+1. Fork and clone the repository
+2. Create a new branch from `main`
+3. Make focused changes (one concern per PR)
+4. Ensure tests pass (`make -C importer test`, `pytest -q`)
+5. Update documentation if adding/removing features
+6. Sign the CLA if required by the project maintainers
+
+#### Code Style
+
+- Follow existing code formatting in `importer/` and `renderer/`
+- Add comments for non-obvious logic
+- Keep imports minimal and version-pinned where necessary
+- Use meaningful commit messages
+
+#### Testing
+
+- Unit tests must pass before committing
+- Integration tests require a PostGIS database; see `TUTORIAL.md` section 4
+- For renderer changes, ensure the PNG output test produces valid images
+
+### Documentation
+
+- Update `README.md`, `TUTORIAL.md`, or docstrings as needed
+- Add examples for new commands or environment variables
+- Keep documentation current with tested dependency versions
+
+### Code Reviews
+
+PRs are reviewed on GitHub. Common review concerns:
+
+- Does this change maintain backward compatibility with older `.osh` files?
+- Are all modified tests passing?
+- Is the code style consistent?
+- Is documentation updated where necessary?
+
+## License and Attribution
+
+This modernization build is derived from work by @joto, with contributions from the MaZderMind community. The original code remains under its respective licenses; this fork's changes are subject to the same licensing terms.
+
+When referring to this project in publications or presentations:
+- Cite both the original (`joto/osm-history-renderer`) and this modernization branch
+- Acknowledge the intermediate `new-osmium-geos` work if building on top of it
+- Note that this is an independent project, not affiliated with the OSM Foundation
+
+## License
+
+See [LICENSE](./LICENSE) for terms.
+
+## Contact
+
+For questions or discussions: open an issue or comment on existing ones.

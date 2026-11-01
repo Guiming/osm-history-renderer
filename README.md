@@ -1,6 +1,27 @@
 # OpenStreetMap History Importer and Renderer
 
-This fork imports `.osh`/`.osh.pbf` OpenStreetMap history into PostgreSQL/PostGIS and renders a selected historical instant with Mapnik. It preserves minor way versions caused by node movement, so geometry changes are represented even when the way itself was not edited.
+## Project Lineage
+
+This modernization branch (`upgrade/geos-3.15-mapnik-4.3.2`) continues the work of the **OSM History Viewer** project, extending compatibility to newer dependency versions while preserving verified functionality.
+
+### Previous Versions and Repositories
+
+- **Original implementation**: [`joto/osm-history-renderer`](https://github.com/joto/osm-history-renderer) — The foundational OSM history importer/renderer by @joto (2016–2024).
+- **MaZderMind fork**: [`MaZderMind/osm-history-renderer`](https://github.com/MaZderMind/osm-history-renderer) — Enhanced the original with better documentation and community contributions.
+- **This repo's new-osmium-geos branch**: The previous modernization effort that upgraded GEOS to 3.10, tested with libosmium 2.6+ and newer GEOS versions. See [`Guiming/osm-history-renderer/new-osmium-geos`](https://github.com/Guiming/osm-history-renderer/tree/new-osmium-geos) for the continuation of that work.
+
+This `upgrade/geos-3.15-mapnik-4.3.2` branch further advances compatibility to GEOS **3.15.0**, libosmium **2.23.1**, Mapnik Python **4.x**, and PostgreSQL 18 with PostGIS 3.6, while preserving the verified output of previous versions.
+
+### Repository Layout
+
+- `importer/` — C++ history importer and SQL schema
+- `renderer/osm_history_renderer/` — installable Python renderer
+- `renderer/render.py` — compatibility entry point for one image
+- `renderer/render-animation.py` — compatibility entry point for frame sequences
+- `scripts/verify-importer-fixtures.sh` — reproducible importer regression checks
+- `environment-importer.yml` — pinned importer build dependencies
+- `environment-renderer.yml` — pinned renderer/test dependencies
+- `TUTORIAL.md` — complete build, import, render, and verification guide It preserves minor way versions caused by node movement, so geometry changes are represented even when the way itself was not edited.
 
 The modernization branch targets supported dependency interfaces while preserving the verified importer output:
 

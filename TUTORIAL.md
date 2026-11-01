@@ -1,5 +1,19 @@
 # Modern setup, import, render, and verification guide
 
+## Project Lineage
+
+This guide describes the `upgrade/geos-3.15-mapnik-4.3.2` branch of the **OSM History Viewer** modernization project, which extends compatibility to GEOS **3.15.0**, libosmium **2.23.1**, and Mapnik Python **4.x**.
+
+### Previous Versions and Repositories
+
+For background on earlier work:
+
+- [`joto/osm-history-renderer`](https://github.com/joto/osm-history-renderer) — The original implementation (2016–2024).
+- [`MaZderMind/osm-history-renderer`](https://github.com/MaZderMind/osm-history-renderer) — Community fork with enhanced documentation and features.
+- [`Guiming/osm-history-renderer/new-osmium-geos`](https://github.com/Guiming/osm-history-renderer/tree/new-osmium-geos) — The previous modernization effort that upgraded GEOS to 3.10 and tested compatibility with libosmium 2.6+.
+
+This `upgrade/geos-3.15-mapnik-4.3.2` branch advances the compatibility boundary further while preserving verified output across versions.
+
 This guide replaces the former Debian 6/Ubuntu 12 instructions. It uses isolated environments and an empty test database so system libraries and verified baseline databases remain untouched.
 
 ## 1. Prerequisites
