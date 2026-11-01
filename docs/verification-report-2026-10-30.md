@@ -1,4 +1,4 @@
-# GEOS 3.15 importer and renderer modernization verification
+# OSM history importer and renderer modernization verification
 
 Date: 2026-10-30
 Branch: `upgrade/geos-3.15-mapnik-4.3.2`
