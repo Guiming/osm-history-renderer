@@ -1,14 +1,75 @@
+# `new-osmium-geos` branch
 
-This branch contains a new version of the importer based on a current version
-of libosmium instead of the very old one of the master branch. You need
-libosmium and protozero installed.
+This historical branch combines joto's `new-osmium` importer modernization with
+additional importer, schema, and renderer work by Guiming. It is unmaintained,
+retained for reference, and is not the current modernization target. For the
+verified, actively modernized code, see the
+[`upgrade/geos-3.15-mapnik-4.3.2` branch](https://github.com/Guiming/osm-history-renderer/tree/upgrade/geos-3.15-mapnik-4.3.2).
 
-===
+## Lineage and comparisons
 
-# Unmaintained
-The osm-history-renderer is currently unmaintained and searching for a new Maintainer.
+The changes relative to joto's `master` branch have two layers:
 
-===
+1. joto's [`new-osmium` branch](https://github.com/joto/osm-history-renderer/tree/new-osmium)
+   modernized the original importer.
+2. This `new-osmium-geos` branch starts from that work and adds the
+   Guiming-specific changes listed below.
+
+Use these comparisons to distinguish the two layers:
+
+- [joto `master` to this branch](https://github.com/joto/osm-history-renderer/compare/master...Guiming:new-osmium-geos)
+- [joto `new-osmium` to this branch](https://github.com/joto/osm-history-renderer/compare/new-osmium...Guiming:new-osmium-geos)
+
+## Changes inherited from joto's `new-osmium` branch
+
+Compared with joto's `master` branch, the shared `new-osmium` work:
+
+- migrated the importer from the legacy Osmium API to modern libosmium and
+  Protozero;
+- switched the importer to C++14 and modernized ownership and cleanup code;
+- changed stored geometries from the obsolete SRID 900913 label to EPSG:3857;
+- used libosmium's Web Mercator projection support; and
+- added compatibility changes for newer GEOS releases, including the corrected
+  transfer of GEOS smart-pointer ownership.
+
+## Additional changes in this branch
+
+Compared with joto's `new-osmium` branch, this branch:
+
+- targets GEOS **3.11.4** in the importer Makefile, selects `g++` by default,
+  and keeps libosmium and Protozero as external build dependencies;
+- records changeset IDs for points, lines, and polygons;
+- stores user names once in `hist_user` instead of repeating them in each
+  geometry table;
+- imports relation versions and relation members into `hist_relation` and
+  `hist_relation_member`, including validity intervals, member types and roles,
+  changeset IDs, and relation z-order;
+- escapes backslashes in relation-member roles before PostgreSQL `COPY`;
+- applies the configured table prefix to the schema SQL instead of assuming
+  `hist_` everywhere;
+- adds separate geometry, validity-time, user, and changeset indexes;
+- bounds computed z-order values to the range `-1000` through `1000`;
+- replaces the sparse-node-store size expressions with integer bit shifts and
+  raises the estimated maximum node ID;
+- ports the renderer scripts from Python 2 syntax to Python 3 and uses an
+  explicit WGS84-to-Web-Mercator `ProjTransform`; and
+- includes z-order in the generated point view used by Mapnik styles.
+
+## Important branch-tip limitations
+
+- Relation metadata and members are imported, but the relation-to-polygon SQL
+  in `importer/scheme/99-after.sql` is commented out. Multipolygon geometries
+  are therefore not generated automatically at this branch tip.
+- `importer/scheme/00-before.sql` still drops the history tables before
+  recreating them. Despite earlier incremental-import work in the branch
+  history, the final tree performs a fresh import rather than appending to an
+  existing database.
+- The GEOS 3.11.4 include and library directories are hard-coded as
+  `/usr/local/geos-3.11.4`; installations elsewhere must adjust the Makefile.
+- This branch predates the reproducible environments and fixture-parity tests
+  available on the current modernization branch.
+
+---
 
 # OpenStreetMap History Renderer & Tools
 This Repository contains an experimental, work-in-progress (as everything in the OSM universe, i think ;)) history renderer. It is able to import a history excerpt (or a full history dump) of OpenStreetMap data and create an image from a specified region for a specific point in time. You may want to see berlin as it was in 2008? No Problem! The importer is written against [Jochen Topfs](https://github.com/joto) great osmium framework which provides history-capable readers for xml and pbf. If you want to try it, check out the [Tutorial](https://github.com/MaZderMind/osm-history-renderer/blob/master/TUTORIAL.md). An example of what can be accomplished with this tool and a little post-processing can be seen here: https://www.youtube.com/watch?v=-ZCI4wHOkAk ("10 años de ediciones Chile OpenStreetMap Time Lapse")
@@ -34,7 +95,7 @@ You can specify some options at the command line:
 
     ./osm-history-importer --nodestore sparse --debug --prefix "hist_" --dsn "host='172.16.0.73' dbname='histtest'" gau-odernheim.osh.pbf
 
-See the [libpq documentation](http://www.postgresql.org/docs/8.1/static/libpq.html#LIBPQ-CONNECT) for a detailed descriptions of the dsn parameters. Beware: the importer does *not* honor relations right now, so no multipolygon-areas or routes in the database.
+See the [libpq documentation](http://www.postgresql.org/docs/8.1/static/libpq.html#LIBPQ-CONNECT) for a detailed description of the DSN parameters. Relation versions and members are stored, but relation geometries are not built automatically because the relation-to-polygon SQL is disabled at this branch tip.
 
 After the import is completed, you can use the render.py and render-animation.py in the "rendering" directory. They work on regular osm styles, so you need to follow the usual preparations for those styles:
 
@@ -102,4 +163,3 @@ I'm not someone who doesn't like to write documentation - I just don't like to w
 If you have any questions just ask at osm@mazdermind.de.
 
 Peter
-
