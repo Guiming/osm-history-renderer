@@ -138,8 +138,17 @@ History extracts contain contributor metadata. Geofabrik makes full-metadata `.o
 
 Record the source URL, download time, byte size, and SHA-256 checksum for every research dataset. See `TUTORIAL.md` for a credential-safe download pattern and the recommended validation order.
 
+## Dependencies and PostgreSQL/PostGIS Compatibility
+
+The verified baseline setup uses:
+- **PostgreSQL 18** with **PostGIS 3.6** via the image `postgis/postgis:18-3.6@sha256:4a43e3c3e5d55b9208240fc71db543b79c638766280c625a425bd0a2390989c4`
+- This combination is compatible with the importer and renderer tested in this branch
+
+The `environment-postgis-latest.yml` file provides an optional edge test configuration with PostgreSQL 19 RC and PostGIS 3.7, but PostgreSQL 18/PostGIS 3.6 remains the production baseline.
+
+If you use a custom PostgreSQL/PostGIS installation, verify compatibility by:
+1. Ensuring `hist_*` tables can be created (requires PostGIS functions)
+2. Checking that geometry types and SRIDs match expected profiles
+3. Running the importer fixtures with your database to confirm row counts and checksums
+
 ## Current scope
-
-The importer stores nodes, ways, relations, relation members, and users. It does not assemble relation multipolygons into the `hist_polygon` table; downstream systems needing relation polygons must run a separately validated relation-processing stage.
-
-The renderer consumes Mapnik XML styles written for the temporary osm2pgsql-compatible view prefix. Animation output is a PNG sequence plus self-contained HTML. Use `ffmpeg` separately when a video container is required.
