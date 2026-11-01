@@ -151,4 +151,13 @@ If you use a custom PostgreSQL/PostGIS installation, verify compatibility by:
 2. Checking that geometry types and SRIDs match expected profiles
 3. Running the importer fixtures with your database to confirm row counts and checksums
 
+## Importer Dependencies
+
+The GEOS 3.15 importer depends on:
+- GEOS **3.15.0** via the reentrant C API (`geos_c.h`)
+- libosmium **2.23.1**
+- The compiled binary is built from source in `importer/` and installed as `/usr/local/bin/osm-history-import`
+
+See [`Guiming/osm-history-renderer`](https://github.com/Guiming/osm-history-renderer/tree/upgrade/geos-3.15-mapnik-4.3.2) for the branch containing this GEOS 3.15 importer.
+
 ## Current scope
