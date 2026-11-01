@@ -10,7 +10,7 @@ For background on earlier work:
 
 - [`MaZderMind/osm-history-renderer`](https://github.com/MaZderMind/osm-history-renderer) — The original implementation created by @MaZderMind.
 - [`joto/osm-history-renderer`](https://github.com/joto/osm-history-renderer) — A fork of MaZderMind's original implementation with subsequent maintenance and modernization by @joto.
-- [`Guiming/osm-history-renderer/new-osmium-geos`](https://github.com/Guiming/osm-history-renderer/tree/new-osmium-geos) — The previous modernization effort that upgraded GEOS to 3.10 and tested compatibility with libosmium 2.6+.
+- [`Guiming/osm-history-renderer/new-osmium-geos`](https://github.com/Guiming/osm-history-renderer/tree/new-osmium-geos) — The previous modernization effort that upgraded GEOS to 3.11 and tested compatibility with libosmium 2.6+.
 
 This `upgrade/geos-3.15-mapnik-4.3.2` branch advances the compatibility boundary further while preserving verified output across versions.
 
