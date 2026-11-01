@@ -50,7 +50,7 @@ def test_render_from_temporary_history_view_and_cleanup(tmp_path):
     output = render_map(
         RenderConfig(
             style=style,
-            output=tmp_path / "maldives",
+            output=tmp_path / "history-snapshot",
             output_type="png",
             size=(160, 160),
             bbox=(73.45, 4.10, 73.65, 4.30),
@@ -60,7 +60,7 @@ def test_render_from_temporary_history_view_and_cleanup(tmp_path):
             columns=("name",),
         )
     )
-    assert output == Path(tmp_path / "maldives.png")
+    assert output == Path(tmp_path / "history-snapshot.png")
     with Image.open(output) as image:
         assert image.size == (160, 160)
         assert len(image.getcolors(maxcolors=160 * 160)) > 1

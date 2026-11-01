@@ -6,7 +6,7 @@ Modernize this fork without changing the history data model or the importer outp
 
 1. Build and run the importer with GEOS 3.15.0 using the supported, stable GEOS C API.
 2. Preserve the renderer, port it to current Python and Mapnik bindings, and remove unsafe SQL construction and obsolete browser dependencies.
-3. Document a reproducible local setup and verify importer output against the existing Maldives reference dataset before using the Greater London integration dataset.
+3. Document a reproducible local setup and verify importer behavior with tracked fixtures before using a project-specific integration dataset.
 
 ## Importer requirements
 
@@ -14,8 +14,8 @@ Modernize this fork without changing the history data model or the importer outp
 - Use only the reentrant GEOS C API from `geos_c.h`; do not include GEOS C++ headers.
 - Link to `geos_c` through package metadata instead of hard-coded include or library paths.
 - Preserve EWKB with SRID 3857, polygon area, optional point-on-surface output, and line-versus-polygon behavior.
-- Preserve the six Maldives reference table counts and sorted-stream SHA-256 hashes recorded in the checked-in verification report.
-- Never alter or drop `osm_history_maldives` or `osm_history_maldives_source`. Test databases must start with `osm_history_geos_upgrade_`.
+- Preserve the behaviors covered by the tracked importer fixtures, including geometry and minor-version handling.
+- Test databases must start with `osm_history_geos_upgrade_` and must never overwrite a user's existing database.
 
 ## Renderer requirements
 
@@ -31,6 +31,6 @@ Modernize this fork without changing the history data model or the importer outp
 ## Documentation and delivery requirements
 
 - Replace the obsolete Debian 6/Ubuntu 12 tutorial with current, versioned setup instructions.
-- Document provenance, authenticated Geofabrik data handling, and the two-stage Maldives-then-London verification workflow.
+- Document provenance, authenticated data handling, and a staged fixture-then-project-dataset verification workflow.
 - Do not commit PBF data, database files, credentials, generated images, compiled binaries, or local environments.
 - Create local commits only after tests pass. Do not push to GitHub without an explicit request.

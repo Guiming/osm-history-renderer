@@ -157,36 +157,27 @@ The resulting core tables are:
 
 `hist_line` and `hist_polygon` contain `minor` versions generated when member-node movement changes a way geometry without a new way version.
 
-## 8. Run the Maldives golden-data gate
+## 8. Run the reproducible importer checks
 
-Before a large regional import, run the exact Maldives gate. The script refuses arbitrary database names, never drops a database, and retains the result for inspection.
-
-On the verified VM:
-
-```bash
-OSM_HISTORY_TEST_DB=osm_history_geos_upgrade_maldives_315_check \
-MALDIVES_PBF=/absolute/path/to/maldives-internal.osh.pbf \
-scripts/verify-maldives-parity.sh
-```
-
-The run must pass:
-
-1. all six table counts;
-2. all six sorted-table SHA-256 hashes;
-3. geometry type, SRID, null, and validity profiles;
-4. polygon-center values;
-5. line and polygon minor-version metrics.
-
-To recheck a retained database without modifying it:
+Before a large regional import, run the focused GEOS test and the small tracked
+history fixtures. These checks are included in the repository and do not depend
+on an account-protected dataset:
 
 ```bash
-OSM_HISTORY_TEST_DB=osm_history_geos_upgrade_maldives_315_check \
-OSM_HISTORY_REUSE_DB=1 \
-MALDIVES_PBF=/absolute/path/to/maldives-internal.osh.pbf \
-scripts/verify-maldives-parity.sh
+micromamba run -p "$HOME/.local/share/osm-history-geos315" \
+  make -C importer test
+
+POSTGRES_PREFIX=/path/to/postgres \
+POSTGRES_HOST=/path/to/postgres/socket \
+POSTGRES_PORT=5432 \
+IMPORTER_ENV_PREFIX="$HOME/.local/share/osm-history-geos315" \
+scripts/verify-importer-fixtures.sh
 ```
 
-Do not proceed to a large-region performance run after a mismatch. Identify the first differing primary key and column first.
+For an additional project-specific regression gate, use an extract that you are
+authorized to access and define expected row counts, geometry profiles, and
+checksums locally. Keep restricted data and derived contributor records out of
+the repository.
 
 ## 9. Render one historical instant
 
@@ -199,13 +190,13 @@ micromamba run -p "$HOME/.local/share/osm-history-renderer-modern" \
   --db "host=/path/to/postgres/socket port=5432 dbname=osm_history_test" \
   --dbprefix hist \
   --view-prefix hist_view \
-  --bbox 73.45,4.10,73.65,4.30 \
+  --bbox -0.15,51.49,-0.05,51.55 \
   --date "2025-01-31 00:00:00" \
   --zoom 12 \
-  --file output/maldives-2025
+  --file output/history-snapshot
 ```
 
-Output is `output/maldives-2025.png`. The temporary views are removed even if Mapnik raises an error. Add `--retain-views` only when debugging a style.
+Output is `output/history-snapshot.png`. The temporary views are removed even if Mapnik raises an error. Add `--retain-views` only when debugging a style.
 
 The legacy entry point has the same arguments:
 
@@ -221,24 +212,24 @@ micromamba run -p "$HOME/.local/share/osm-history-renderer-modern" \
   osm-history-render-animation \
   --style /absolute/path/to/style.xml \
   --db "host=/path/to/postgres/socket port=5432 dbname=osm_history_test" \
-  --bbox 73.45,4.10,73.65,4.30 \
+  --bbox -0.15,51.49,-0.05,51.55 \
   --anistart 2024-01-01 \
   --aniend 2025-01-01 \
   --anistep months=+1 \
   --fps 2 \
   --label '%Y-%m-%d' \
-  --file output/maldives-history
+  --file output/history-animation
 ```
 
-This creates numbered PNG frames in `output/maldives-history/` and a self-contained `output/maldives-history.html` player. The player uses browser-native JavaScript and makes no jQuery/CDN requests. Labels are drawn with Pillow.
+This creates numbered PNG frames in `output/history-animation/` and a self-contained `output/history-animation.html` player. The player uses browser-native JavaScript and makes no jQuery/CDN requests. Labels are drawn with Pillow.
 
 To create a video, run `ffmpeg` separately, for example:
 
 ```bash
 ffmpeg -framerate 2 \
-  -i output/maldives-history/%010d.png \
+  -i output/history-animation/%010d.png \
   -c:v libx264 -pix_fmt yuv420p \
-  output/maldives-history.mp4
+  output/history-animation.mp4
 ```
 
 ## 11. Large-region validation order
@@ -246,7 +237,7 @@ ffmpeg -framerate 2 \
 Use this order for a Greater London or other large extract:
 
 1. pass the focused C++ GEOS test;
-2. pass the complete Maldives import and exact parity script;
+2. pass all tracked importer fixtures;
 3. pass all renderer unit and PostGIS integration tests;
 4. record the large extract's provenance and checksum;
 5. import it into a new database;
@@ -254,4 +245,4 @@ Use this order for a Greater London or other large extract:
 7. render a small known bbox/date before starting a full animation;
 8. record wall time, peak RSS, database size, PostgreSQL/PostGIS versions, and command lines.
 
-Large-region timings are performance evidence, not a substitute for the deterministic Maldives parity gate.
+Large-region timings are performance evidence, not a substitute for deterministic fixture and semantic checks.

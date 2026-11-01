@@ -7,7 +7,7 @@ fi
 
 input_file="${OSM_HISTORY_IMPORT_FILE:-}"
 if [[ -z "${input_file}" ]]; then
-    printf 'OSM_HISTORY_IMPORT_FILE is required (for example /history/maldives-internal.osh.pbf).\n' >&2
+    printf 'OSM_HISTORY_IMPORT_FILE is required (for example /history/region.osh.pbf).\n' >&2
     exit 2
 fi
 if [[ ! -f "${input_file}" ]]; then

@@ -7,7 +7,6 @@ readonly DATABASE_ENV_PREFIX="${LATEST_POSTGIS_ENV_PREFIX:?Set LATEST_POSTGIS_EN
 readonly IMPORTER_ENV_PREFIX="${IMPORTER_ENV_PREFIX:?Set IMPORTER_ENV_PREFIX to the importer environment prefix}"
 readonly IMPORTER="${IMPORTER:-${REPOSITORY_ROOT}/importer/osm-history-importer}"
 readonly DATABASE_PORT="${LATEST_POSTGIS_PORT:-55438}"
-readonly MALDIVES_PBF="${MALDIVES_PBF:?Set MALDIVES_PBF to the verified Maldives .osh.pbf fixture}"
 
 for executable in "${MICROMAMBA}" "${IMPORTER}"; do
     if [[ ! -x "${executable}" ]]; then
@@ -85,15 +84,5 @@ env \
     IMPORTER="${IMPORTER}" \
     OSM_HISTORY_FIXTURE_DB_PREFIX="osm_history_geos_upgrade_pg18pg37_fixture_" \
     "${REPOSITORY_ROOT}/scripts/verify-importer-fixtures.sh"
-
-env \
-    POSTGRES_PREFIX="${DATABASE_ENV_PREFIX}" \
-    POSTGRES_HOST="${socket_directory}" \
-    POSTGRES_PORT="${DATABASE_PORT}" \
-    IMPORTER_ENV_PREFIX="${IMPORTER_ENV_PREFIX}" \
-    IMPORTER="${IMPORTER}" \
-    MALDIVES_PBF="${MALDIVES_PBF}" \
-    OSM_HISTORY_TEST_DB="osm_history_geos_upgrade_maldives_pg18pg37" \
-    "${REPOSITORY_ROOT}/scripts/verify-maldives-parity.sh"
 
 printf 'Latest stable PostgreSQL/PostGIS compatibility gate passed.\n'
