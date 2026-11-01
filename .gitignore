@@ -1,0 +1,15 @@
+*.osh.pbf
+*.pbf
+.pytest_cache/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.coverage
+.venv/
+build/
+dist/
+importer/osm-history-importer
+importer/test/test-geoscontext
+renderer/*.html
+renderer/map.*
+renderer/animap/

@@ -1,0 +1,17 @@
+.git
+.gitignore
+.env
+.env.*
+**/__pycache__/
+**/*.pyc
+**/*.osh
+**/*.osh.pbf
+**/*.osm.pbf
+**/*.pbf
+**/*.tar
+**/*.tar.gz
+**/*.zip
+**/osm-history-importer
+**/test-geoscontext
+docs/
+renderer/

@@ -32,10 +32,12 @@ static struct {
     { 6, "secondary",      true },
     { 7, "primary_link",   true },
     { 7, "primary",        true },
-    { 8, "trunk_link",     true },
-    { 8, "trunk",          true },
-    { 9, "motorway_link",  true },
-    { 9, "motorway",       true }
+    // Keep the established renderer ordering used by this fork.  Trunk and
+    // motorway ways intentionally share the same offset.
+    { 5, "trunk_link",     true },
+    { 5, "trunk",          true },
+    { 5, "motorway_link",  true },
+    { 5, "motorway",       true }
 };
 
 /**
@@ -62,11 +64,6 @@ public:
         // the calculated z-order
         long int z_order = 0;
 
-        // flag, signaling if this way should be additionally placed in
-        // the lowzoom-line-table (osm2pgsql calls it "roads")
-        // NOTE: this is curently not used
-        int lowzoom = false;
-
         // shorthands to the values of different keys, contributing to
         // the z-order calculation
         const char *layer = tags.get_value_by_key("layer");
@@ -74,7 +71,6 @@ public:
         const char *bridge = tags.get_value_by_key("bridge");
         const char *tunnel = tags.get_value_by_key("tunnel");
         const char *railway = tags.get_value_by_key("railway");
-        const char *boundary = tags.get_value_by_key("boundary");
 
         // if the way has a layer-tag
         if (layer) {
@@ -87,9 +83,8 @@ public:
             for (const auto& layer : layers) {
                 if (0 == std::strcmp(layer.highway, highway)) {
 
-                    // and copy over its offset & lowzoom value
+                    // copy over its z-order offset
                     z_order += layer.offset;
-                    lowzoom = layer.lowzoom;
                     break;
                 }
             }
@@ -97,15 +92,8 @@ public:
 
         // if the way has a railway tag
         if (railway) {
-            // raise its z-order by 5 and set the lowzoom flag
+            // raise its z-order by 5
             z_order += 5;
-            lowzoom = true;
-        }
-
-        // if it has a boundary=administrative tag
-        if (boundary && 0 == std::strcmp(boundary, "administrative")) {
-            // set the lowzoom flag
-            lowzoom = true;
         }
 
         // if it has a bridge tag and it evaluates to true

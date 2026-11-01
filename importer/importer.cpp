@@ -13,8 +13,6 @@
 #include <osmium/io/any_input.hpp>
 #include <osmium/io/reader.hpp>
 
-#include <geos/util/GEOSException.h>
-
 /**
  * include the importer-handler which contains the main importer-logic.
  */

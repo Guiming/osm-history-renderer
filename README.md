@@ -1,105 +1,120 @@
+# OpenStreetMap History Importer and Renderer
 
-This branch contains a new version of the importer based on a current version
-of libosmium instead of the very old one of the master branch. You need
-libosmium and protozero installed.
+This fork imports `.osh`/`.osh.pbf` OpenStreetMap history into PostgreSQL/PostGIS and renders a selected historical instant with Mapnik. It preserves minor way versions caused by node movement, so geometry changes are represented even when the way itself was not edited.
 
-===
+The modernization branch targets supported dependency interfaces while preserving the verified importer output:
 
-# Unmaintained
-The osm-history-renderer is currently unmaintained and searching for a new Maintainer.
+- GEOS **3.15.0** through the reentrant C API (`geos_c.h`)
+- libosmium **2.23.1** and C++17
+- Python **3.11+** (tested with 3.12.16)
+- Mapnik Python **4.x** (tested with 4.3.2)
+- Psycopg **3**, python-dateutil, and Pillow
+- PostgreSQL **15** and PostGIS **3.4** in the verified local setup
 
-===
+## Repository layout
 
-# OpenStreetMap History Renderer & Tools
-This Repository contains an experimental, work-in-progress (as everything in the OSM universe, i think ;)) history renderer. It is able to import a history excerpt (or a full history dump) of OpenStreetMap data and create an image from a specified region for a specific point in time. You may want to see berlin as it was in 2008? No Problem! The importer is written against [Jochen Topfs](https://github.com/joto) great osmium framework which provides history-capable readers for xml and pbf. If you want to try it, check out the [Tutorial](https://github.com/MaZderMind/osm-history-renderer/blob/master/TUTORIAL.md). An example of what can be accomplished with this tool and a little post-processing can be seen here: https://www.youtube.com/watch?v=-ZCI4wHOkAk ("10 años de ediciones Chile OpenStreetMap Time Lapse")
+- `importer/` — C++ history importer and SQL schema
+- `renderer/osm_history_renderer/` — installable Python renderer
+- `renderer/render.py` — compatibility entry point for one image
+- `renderer/render-animation.py` — compatibility entry point for frame sequences
+- `scripts/verify-maldives-parity.sh` — guarded, reproducible importer parity gate
+- `environment-importer.yml` — pinned importer build dependencies
+- `environment-renderer.yml` — pinned renderer/test dependencies
+- `TUTORIAL.md` — complete build, import, render, and verification guide
 
-If you'd like to support this project, Flatter it:
+## Quick start
 
-[![Flattr this git repo](http://api.flattr.com/button/flattr-badge-large.png)](https://flattr.com/submit/auto?user_id=MaZderMind&url=https://github.com/MaZderMind/osm-history-renderer&title=osm-history-renderer&language=en_GB&tags=github&category=software) 
+Create the isolated environments:
 
-## Build it
-The importer can be compiled with g++ or clang++. Both compilers are mentioned in the Makefile, so just uncomment whichever suites your needs best. Build it using make and then run it as described below.
+```bash
+micromamba create -y \
+  -p "$HOME/.local/share/osm-history-geos315" \
+  -f environment-importer.yml
 
-## Run it
-In order to run it, you'll need data-input. I'd suggest starting with a small extract as a basis. There are some [hosted extracts](http://osm.personalwerk.de/full-history-extracts/).
-All extracts have been created using my [OpenStreetMap History Splitter](https://github.com/MaZderMind/osm-history-splitter/), so if you want your own area, go and download the latest [Full-Experimental Dump](http://osm.personalwerk.de/full-experimental/) and split it yourself using the `--softcut` mode.
+micromamba create -y \
+  -p "$HOME/.local/share/osm-history-renderer-modern" \
+  -f environment-renderer.yml
+```
 
-Next you're going to need a postgres-database with `postgis`, `hstore` and `btree_gist` installed. Check out the [Tutorial](https://github.com/MaZderMind/osm-history-renderer/blob/master/TUTORIAL.md) for details.
+Build and test the importer:
 
-After you have your data in place, use the importer to import the data:
+```bash
+micromamba run -p "$HOME/.local/share/osm-history-geos315" \
+  make -C importer clean all test
+```
 
-    ./osm-history-importer gau-odernheim.osh.pbf
+Install and test the renderer:
 
-You can specify some options at the command line:
+```bash
+micromamba run -p "$HOME/.local/share/osm-history-renderer-modern" \
+  python -m pip install --no-deps -e .
 
-    ./osm-history-importer --nodestore sparse --debug --prefix "hist_" --dsn "host='172.16.0.73' dbname='histtest'" gau-odernheim.osh.pbf
+micromamba run -p "$HOME/.local/share/osm-history-renderer-modern" \
+  pytest -q
+```
 
-See the [libpq documentation](http://www.postgresql.org/docs/8.1/static/libpq.html#LIBPQ-CONNECT) for a detailed descriptions of the dsn parameters. Beware: the importer does *not* honor relations right now, so no multipolygon-areas or routes in the database.
+Create a PostGIS database before importing:
 
-After the import is completed, you can use the render.py and render-animation.py in the "rendering" directory. They work on regular osm styles, so you need to follow the usual preparations for those styles:
+```sql
+CREATE EXTENSION postgis;
+CREATE EXTENSION hstore;
+CREATE EXTENSION btree_gist;
+```
 
-    svn co http://svn.openstreetmap.org/applications/rendering/mapnik/ osm-mapnik-style
-    cd osm-mapnik-style/
-    ./get-coastlines.sh
-    ./generate_xml.py --accept-none --prefix 'hist_view'
+Then import an authenticated history extract:
 
-If you have mapnik2, you'll need to migrate the osm.xml to mapnik2 syntax:
-    upgrade_map_xml.py osm.xml osm-mapnik2.xml
+```bash
+micromamba run -p "$HOME/.local/share/osm-history-geos315" \
+  importer/osm-history-importer \
+  --nodestore sparse \
+  --dsn "host=/path/to/postgres/socket port=5432 dbname=osm_history" \
+  /path/to/region-internal.osh.pbf
+```
 
-'hist_view' is a special value. During rendering, render.py will create views (hist_view_point, hist_view_line, ..) that represent the state of the database at a given point in time. Those views behave just like regular osm2pgsql tables and enable history rendering with nearly all existing osm2pgsql styles. Now that you prepared your rendering-style, it's time to render your first image:
+Render a snapshot with an osm2pgsql-compatible Mapnik XML style:
 
-    ./render.py --style ~/osm-mapnik-style/osm-mapnik2.xml --bbox 8.177700,49.771700,8.205600,49.791600 --date 2009-01-01
+```bash
+micromamba run -p "$HOME/.local/share/osm-history-renderer-modern" \
+  osm-history-render \
+  --style /path/to/style.xml \
+  --db "host=/path/to/postgres/socket port=5432 dbname=osm_history" \
+  --bbox 73.45,4.10,73.65,4.30 \
+  --date 2025-01-31 \
+  --zoom 12 \
+  --file maldives-2025
+```
 
-Interested in how your town looked in 2009, hm? And it was all in the OSM-Database - all that time! Sleeping data.. *getting melancholic*
-So let's see how your town evolved over time - let's make an animation:
+The compatibility command remains valid:
 
-    ./render-animation.py --style ~/osm-mapnik-style/osm-mapnik2.xml --bbox 8.177700,49.771700,8.205600,49.791600
+```bash
+renderer/render.py --help
+```
 
-This will leave you with a set of .png files, one for each month since the first node was placed in your area. If you want render-animation.py to assemble a real video for you, use `--type mp4`. This will create a lossless mp4 for you. Use render-animation.py `-h` to get information over the wide range of control, the script gives to you.
+Temporary `hist_view_{point,line,roads,polygon}` views are removed after each render, including when rendering fails. Use `--retain-views` only for deliberate inspection.
 
-## Nodestores
-The Importer comes with two nodestores: stl and sparse.
+## Importer parity
 
-The Stl-Nodestore is the default one. It's built on top of the [STL-Template](http://de.wikipedia.org/wiki/Standard_Template_Library) [std::map](http://www.cplusplus.com/reference/map/map/). Currently it seems, that it's faster than the spase nodestore, but it's only capable of importing very small extracts, because it's not very memory efficient.
+The Maldives fixture is the required golden-data gate. A verified run produced exact matches for all six tables:
 
-The Sparse-Nodestore is the newer one. It's built on top of the [Google Sparsetable](http://google-sparsehash.googlecode.com/svn/trunk/doc/sparsetable.html) and a custom memory block management. It's much, much more space efficient but it seems to take slightly more time on startup and it also contains more custom code, so more potential for bugs. Sooner or later sparse will become the default node-store, as it's your only option to import larger extracts or even a whole planet.
+| Table | Rows | SHA-256 of sorted `COPY` stream |
+|---|---:|---|
+| `hist_point` | 690,224 | `eca37b81f650ec3dd115570f0972c5b066eaf965a5431b87c82c49aa4e84d424` |
+| `hist_line` | 73,587 | `d91a3a89cab93d61482a5823e5b3a291df13b0871fae3cb572ccdd3ccbe8247c` |
+| `hist_polygon` | 84,651 | `ac213b2ee9d17dac0b1dfa407f5f235fb1e593ebd508039c3497cebd704d6e60` |
+| `hist_relation` | 3,112 | `92dab89283889ff975d179ae3d37dda601ab737c4075dc768924e765655c387c` |
+| `hist_relation_member` | 1,052,280 | `00e8540a019ffb9c78cbd048e0871049cd3bb059885fabc034e648acbade9e50` |
+| `hist_user` | 1,472 | `78bfb6cc7763de923af8ed7c46cb2b6c3080cab80d480238de0ea2e1eedf5ace` |
 
-## Space & Time Requirements
-I imported [rheinland-pfalz.osh.pbf](http://osm.personalwerk.de/full-history-extracts/history_2012-10-13_13:35/europe/germany/rheinland-pfalz.osh.pbf) (308M) with the sparse nodestore. It took around 1.2 GB of RAM from which apparently ~700M was taken by the nodestore and 400M by the pbf reader. Process Runtime was around 30 Minutes. The generated Tables on disk took ~14 GB including indexes.
+The parity script also checks geometry types, SRIDs, null and validity profiles, polygon-center values, and line/polygon minor-version metrics. It only creates databases whose names start with `osm_history_geos_upgrade_`; it never drops a database.
 
-## Granularity
-The MinorTimesCalculator calculates for which timestamps a minor way version is needed. This is the place that determines the granularity of your database on the time axis.
+## Data and privacy
 
-By default it stores data to the split second. When a node is moved two times within a second (or two nodes of the same way), one minor version is generated. If the node timestamps differ, for each timestamp a minor version is generated. Worst case you'll have a full way geometry for each and every second.
-In future it will be possible to reduce the granularity to, say, a day, so at worst you'll have a full way geometry per day. This should reduce the database size drastically.
+History extracts contain contributor metadata. Geofabrik makes full-metadata `.osh.pbf` files available through its authenticated internal download service and notes that the data is subject to EU data-protection requirements. Keep the extract local, respect the provider's terms, and never commit it, credentials, cookies, database files, or rendered private outputs to Git.
 
+Record the source URL, download time, byte size, and SHA-256 checksum for every research dataset. See `TUTORIAL.md` for a credential-safe download pattern and the required Maldives-before-large-region validation order.
 
-## Speeeeed
-Yep, the import is slow. I know and I haven't done much optimizing in the code. The Route I'm going is
+## Current scope
 
- 1. No Tool
- 2. A Tool
- 3. A fast Tool
+The importer stores nodes, ways, relations, relation members, and users. It does not assemble relation multipolygons into the `hist_polygon` table; downstream systems needing relation polygons must run a separately validated relation-processing stage.
 
-And I'm currently working on 2. Some lines in the code have been annotated with `// SPEED`, which means that I know a speed improvement is possible here, but I haven't implemented it yet because I want to have a) running code as soon as possible and b) code, that makes it easy to change things around. Both are impossible with highly optimized code.
-
-Is the rendering slow? Who knows - I don't. I don't know how a combined spatial + date-time btree index performs on a huge dataset, if a simple geom index will be more efficient or if another database scheme is suited better, but as with the importer there's no other way to learn about this other then trying.
-
-## Memory usage
-The importer currently stores lat and lon for each and every node, indexed by node-id and node-timestamp inside two nested std::map instances. This is okay for smaller regions but there are ways to improve both, memory usage and speed. The roadmap is here very similar to the one mentioned above:
-
- 1. Make it work
- 2. Make it scale
- 3. Make it fast
-
-Currently I'm thinking of some ways to improve memory usage. I don't think the version is really needed so we may save 4 bytes per node. Lat/Lon is stored as double which could be shrinked using a fixed-length storage and varints. I'm thinking about using protobuffers or sqlite as node-stores but some benchmarks would be needed. If you have another idea, don't hesitate to drop me an email.
-Take a look at the [Wiki-Page](https://wiki.openstreetmap.org/wiki/OSM_History_Renderer) for some notes about memory usage of different imports.
-
-## Documentation
-I'm not someone who doesn't like to write documentation - I just don't like to write it twice. So once the code runs smoothly and is cleaned up, I'll update and rewrite the documentation. If you're stuck while playing around in this early stage, please just drop me a mail and I'll help you out.
-
-## Contact
-If you have any questions just ask at osm@mazdermind.de.
-
-Peter
-
+The renderer consumes Mapnik XML styles written for the temporary osm2pgsql-compatible view prefix. Animation output is a PNG sequence plus self-contained HTML. Use `ffmpeg` separately when a video container is required.

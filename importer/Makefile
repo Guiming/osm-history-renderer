@@ -4,46 +4,43 @@
 #
 #------------------------------------------------------------------------------
 
-CXX = g++
-#CXX = clang++
+CXX ?= c++
+PKG_CONFIG ?= pkg-config
+GEOS_CONFIG ?= geos-config
 
-CXXFLAGS = -std=c++14 -g -O3 -Wall -Wextra -pedantic
+CPPFLAGS += $(shell $(PKG_CONFIG) --cflags libpq)
+CPPFLAGS += $(shell $(GEOS_CONFIG) --cflags)
+CXXFLAGS ?= -g -O3
+CXXFLAGS += -std=c++17 -Wall -Wextra -Wpedantic
+CXXFLAGS += $(shell getconf LFS_CFLAGS)
+LDLIBS += -lexpat -lbz2
+LDLIBS += $(shell $(PKG_CONFIG) --libs libpq)
+LDLIBS += -lz -pthread
+LDLIBS += $(shell $(GEOS_CONFIG) --clibs)
 
-CXXFLAGS += `getconf LFS_CFLAGS`
-#CXXFLAGS += -Wredundant-decls -Wdisabled-optimization
-#CXXFLAGS += -Wpadded -Winline
-
-# path to includes
-CXXFLAGS += -I/usr/include/postgresql/ -I/usr/include/libxml2/ -I/usr/local/geos-3.11.4/include -L/usr/local/geos-3.11.4/lib
-
-# compile & link against expat to have xml reading support
-LDFLAGS += -lexpat -lbz2
-
-# compile & link against postgres to have database access
-LDFLAGS += -lpq
-
-# compile &  link against libs needed for protobuf reading and writing
-LDFLAGS += -lz -lpthread
-
-# compile &  link against geos for multipolygon extracts
-CXXFLAGS += -DOSMIUM_WITH_GEOS
-LDFLAGS += -lgeos
-
-.PHONY: all clean install
+.PHONY: all clean install test test-geos
 
 all: osm-history-importer
 
-osm-history-importer: importer.cpp handler.hpp nodestore.hpp nodestore/stl.hpp nodestore/sparse.hpp polygonidentifyer.hpp zordercalculator.hpp sorttest.hpp project.hpp
-	$(CXX) $(CXXFLAGS) -o $@ $< $(LDFLAGS)
+osm-history-importer: importer.cpp handler.hpp geombuilder.hpp geoscontext.hpp nodestore.hpp nodestore/stl.hpp nodestore/sparse.hpp polygonidentifyer.hpp zordercalculator.hpp sorttest.hpp project.hpp
+	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -o $@ $< $(LDFLAGS) $(LDLIBS)
+
+test/test-geoscontext: test/test-geoscontext.cpp geoscontext.hpp
+	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -o $@ $< $(LDFLAGS) $(LDLIBS)
+
+test-geos: test/test-geoscontext
+	./test/test-geoscontext
+
+test: test-geos
 
 install:
-	install -m 755 -g root -o root -d $(DESTDIR)/usr/bin
-	install -m 755 -g root -o root osm-history-importer $(DESTDIR)/usr/bin/osm-history-importer
-	install -m 755 -g root -o root -d $(DESTDIR)/usr/share/osm-history-importer/scheme
-	install -m 644 -g root -o root scheme/*.sql $(DESTDIR)/usr/share/osm-history-importer/scheme
+	install -m 755 -d $(DESTDIR)/usr/bin
+	install -m 755 osm-history-importer $(DESTDIR)/usr/bin/osm-history-importer
+	install -m 755 -d $(DESTDIR)/usr/share/osm-history-importer/scheme
+	install -m 644 scheme/*.sql $(DESTDIR)/usr/share/osm-history-importer/scheme
 
 clean:
-	rm -f *.o core osm-history-importer
+	rm -f *.o core osm-history-importer test/test-geoscontext
 
 check:
 	cppcheck --enable=all *.cpp
@@ -57,7 +54,7 @@ check-includes:
 	for FILE in *.hpp *.cpp; do \
 		echo "$${FILE}:" >>check-includes-report; \
 		echo -n "$${FILE} "; \
-		if `g++ -I include $${FILE} 2>>check-includes-report`; then \
+		if `$(CXX) $(CPPFLAGS) $(CXXFLAGS) $${FILE} 2>>check-includes-report`; then \
 			echo "[OK]"; \
 		else \
 			echo "[FAILED]"; \

@@ -135,6 +135,7 @@ public:
                 case PGRES_FATAL_ERROR:
                 case PGRES_NONFATAL_ERROR:
                     std::cerr << "PQresultErrorMessage=" << PQresultErrorMessage(res) << "\n";
+                    [[fallthrough]];
 
                 default:
                     std::cerr << "PQresultStatus=" << status << "\n";

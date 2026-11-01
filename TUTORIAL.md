@@ -1,194 +1,257 @@
-# Getting started
-This is a complete tutorial which will guide you through creating your own history animation. It contains instructions for a fresh Debian 6.0.4 or a fresh Ubuntu 11.10 installation.
+# Modern setup, import, render, and verification guide
 
-## installing the packages
-First off, you'll need a set of packages. The latest Version of the main OpenStreetMap.org-Style requires mapnik2 which is not in the stable release
-of Debian 6.0, which is why we're pulling the mapnik2-libs from the testing repositories. If you're on  Ubuntu 12.10 you're lucky, as here everything
-you need is in the repos.
+This guide replaces the former Debian 6/Ubuntu 12 instructions. It uses isolated environments and an empty test database so system libraries and verified baseline databases remain untouched.
 
-### on Debian 6.0.4
-first of all: [install sudo](http://www.ducea.com/2006/05/18/install-sudo-on-debian/) and create a sudoers file. In order to get pyton-mapnik2 running under debian stable, we need to upgrade gcc land libc6 as well.
+## 1. Prerequisites
 
-    echo 'deb http://ftp.us.debian.org/debian testing main non-free contrib' | sudo tee /etc/apt/sources.list.d/testing.list
+Install or provide:
 
-    echo 'Package: *
-    Pin: release a=stable
-    Pin-Priority: 700
+- Git
+- Micromamba (or an equivalent Conda-compatible client)
+- PostgreSQL 15+ with PostGIS, hstore, and btree_gist
+- at least enough disk for the raw history extract, imported tables, indexes, and temporary database work
+- a Mapnik XML style whose datasource table names use the selected view prefix
 
-    Package: *
-    Pin: release a=testing
-    Pin-Priority: 650' | sudo tee /etc/apt/preferences.d/pinning
-    
-    sudo apt-get install postgresql postgresql-contrib postgresql-8.4-postgis postgis zlib1g-dev libexpat1 libexpat1-dev  \
-        libxml2 libxml2-dev libgeos-dev libgeos++-dev libprotobuf6 libprotobuf-dev protobuf-compiler libsparsehash-dev \
-        libboost-dev libgdal1-dev libproj-dev subversion git build-essential unzip python-dateutil python-psycopg2 \
-        graphicsmagick doxygen graphviz clang
-    
-    sudo apt-get -t testing install python-mapnik2
+The checked-in environments pin the versions used for this modernization:
 
-### on Ubuntu 12.10
-    sudo apt-get update
-    sudo apt-get install postgresql-9.1 postgresql-contrib-9.1 postgresql-9.1-postgis postgis zlib1g-dev libexpat1 libexpat1-dev  \
-        libxml2 libxml2-dev libgeos-dev libgeos++-dev libprotobuf7 libprotobuf-dev protobuf-compiler libsparsehash-dev libboost-dev \
-        libgdal1-dev libproj-dev subversion git build-essential unzip python-dateutil python-psycopg2 \
-        graphicsmagick doxygen graphviz python-mapnik2 clang
+- importer: GEOS 3.15.0 and libosmium 2.23.1
+- renderer: Python 3.12 and Mapnik 4.3.2
 
-## getting and building the tools
-Next, you'll want to download and build the history-splitter and the history-renderer.
-First, get and build the osm-pbf lib:
+## 2. Create isolated environments
 
-    git clone https://github.com/scrosby/OSM-binary.git
-    cd OSM-binary/src
-    make
-    sudo make install
-    cd ../..
+From the repository root:
 
-Second you'll need osmium:
+```bash
+micromamba create -y \
+  -p "$HOME/.local/share/osm-history-geos315" \
+  -f environment-importer.yml
 
-    git clone https://github.com/joto/osmium.git
-    cd osmium
-    make doc
-    sudo make install
-    cd ..
+micromamba create -y \
+  -p "$HOME/.local/share/osm-history-renderer-modern" \
+  -f environment-renderer.yml
+```
 
-Next, get and build the splitter:
+Verify the main versions:
 
-    git clone https://github.com/MaZderMind/osm-history-splitter.git
-    cd osm-history-splitter
-    make
-    sudo make install
-    cd ..
+```bash
+micromamba run -p "$HOME/.local/share/osm-history-geos315" \
+  geos-config --version
 
-Next one will be the importer and renderer:
+micromamba run -p "$HOME/.local/share/osm-history-renderer-modern" \
+  python -c "import importlib.metadata; print(importlib.metadata.version('mapnik'))"
+```
 
-    git clone https://github.com/MaZderMind/osm-history-renderer.git
-    cd osm-history-renderer/importer
-    make
-    sudo make install
-    cd ../..
+Expected values are `3.15.0` and `4.3.2`.
 
-Congratulations. You're now equipped with everything you need.
+For VS Code, select:
 
-## cutting your area
- Most people will want to create their own extract before rendering, so we'll cover this step here, too. First, download the [latest full-planet-full-history pbf](http://planet.openstreetmap.org/pbf/full-history/history-latest.osm.pbf).
- 
-    mkdir osm-data
-    cd osm-data
-    wget http://planet.openstreetmap.org/pbf/full-history/history-latest.osm.pbf
+```text
+~/.local/share/osm-history-renderer-modern/bin/python
+```
 
-next we'll create a splitter-config-file. Create a file named "splitter.config" which contains a single line:
+Run C++ builds through the importer environment rather than changing system include/library paths.
 
-    karlsruhe.osh.pbf BBOX 8.3122,48.9731,8.5139,49.0744
+## 3. Build and test the importer
 
-make sure to use .osh as primary file extension, as a .osm won't contain the visible-information.
-Now you're ready to run the splitter:
+```bash
+micromamba run -p "$HOME/.local/share/osm-history-geos315" \
+  make -C importer clean all test
+```
 
-    osm-history-splitter --softcut history-latest.osm.pbf splitter.config
+Confirm the binary uses the GEOS C library and no project source uses the removed C++ API:
 
-it will run for several minutes and create the karlsruhe-extract for you.
+```bash
+ldd importer/osm-history-importer | grep geos
+rg -n '#include <geos/|geos::' importer \
+  --glob '*.cpp' --glob '*.hpp'
+```
 
-## creating the database
-next we'll get that data into the database. Oh wait: which database? We'll first have to setup our postgres database. It's best if you use your user-database (that's database-name = your unix username):
+`ldd` should show `libgeos_c`; the `rg` command should produce no matches.
 
-### on Debian 6.0.4
-    sudo -u postgres createuser $USER
-    sudo -u postgres createdb -EUTF8 -O$USER $USER
-    sudo -u postgres createlang plpgsql $USER
-    sudo -u postgres psql $USER </usr/share/postgresql/8.4/contrib/hstore.sql
-    sudo -u postgres psql $USER </usr/share/postgresql/8.4/contrib/btree_gist.sql
-    sudo -u postgres psql $USER </usr/share/postgresql/8.4/contrib/postgis-1.5/postgis.sql
-    sudo -u postgres psql $USER </usr/share/postgresql/8.4/contrib/postgis-1.5/spatial_ref_sys.sql
-    echo "GRANT ALL ON geometry_columns TO $USER" | sudo -u postgres psql $USER
-    echo "GRANT ALL ON spatial_ref_sys TO $USER" | sudo -u postgres psql $USER
+## 4. Install and test the renderer
 
-### on Ubuntu 12.10
-    sudo -u postgres createuser $USER
-    sudo -u postgres createdb -EUTF8 -O$USER $USER
-    echo 'CREATE EXTENSION hstore' | sudo -u postgres psql $USER
-    echo 'CREATE EXTENSION btree_gist' | sudo -u postgres psql $USER
-    echo 'CREATE EXTENSION postgis' | sudo -u postgres psql $USER
+Install this checkout in editable mode:
 
-## importing data
-now you're ready to connect to your database:
+```bash
+micromamba run -p "$HOME/.local/share/osm-history-renderer-modern" \
+  python -m pip install --no-deps -e .
+```
 
-    psql
+Run the portable tests:
 
-type \d to get an overview of the tables in your database. Type \q to get back to the shell.
-Now, run the importer on that file:
+```bash
+micromamba run -p "$HOME/.local/share/osm-history-renderer-modern" \
+  pytest -q
+```
 
-    osm-history-importer karlsruhe.osh.pbf
+To include the PostGIS and Mapnik integration tests, point them at a disposable imported database:
 
-It will walk through the file and create a neat history database of it, including valid-from, valid-to and minor-version fields and geometries of all nodes and ways.
-You cann call psql again to see the freshly created tables.
+```bash
+OSM_HISTORY_TEST_DSN="host=/path/to/postgres/socket port=5432 dbname=osm_history_test" \
+micromamba run -p "$HOME/.local/share/osm-history-renderer-modern" \
+  pytest -q
+```
 
-If you get short on RAM (especially if your extract is somehow bigger then a city), add ``--nodestore sparse`` to your command. check the README on the details about the sparse nodestore.
+The integration tests create uniquely prefixed views and remove them in `finally` cleanup.
 
-## getting the style
-now it's time to visualize that data. You can use any mapnik-style you want like the [openstreetmap.org-style](http://svn.openstreetmap.org/applications/rendering/mapnik/) or the [mapquest-style](https://github.com/MapQuest/MapQuest-Mapnik-Style) or, if you in Germany, you'll probably want to try out the [german style](http://www.openstreetmap.de/germanstyle.html). We'll choose the openstreetmap.org-style for this tutorial:
+## 5. Obtain and record history data
 
-    svn co http://svn.openstreetmap.org/applications/rendering/mapnik/ osm-mapnik-style
-    cd osm-mapnik-style
-    ./get-coastlines.sh
-    ./generate_xml.py --accept-none --prefix hist_view
-    cd ..
+The importer requires history data (`.osh` or `.osh.pbf`), not an ordinary current-state `.osm.pbf` extract.
 
-so now you have the style and all required components.
+Geofabrik's public extracts omit contributor identifiers. Full-metadata history files are available to OpenStreetMap contributors through Geofabrik's authenticated internal server and are subject to data-protection requirements. Use the authenticated provider workflow in a browser or a provider-supported credential store; do not put an OSM password, cookie, token, or signed URL in this repository, shell history, documentation, or test output.
 
-## rendering
-let's paint colorful maps:
+After downloading, record provenance outside the dataset itself:
 
-    osm-history-renderer/renderer/render.py --style osm-mapnik-style/osm.xml --date 2011-10-01 \
-        --bbox 8.3122,48.9731,8.5139,49.0744 --file 2011
+```bash
+stat --printf='bytes=%s modified=%y\n' /secure/data/region-internal.osh.pbf
+sha256sum /secure/data/region-internal.osh.pbf
+```
 
-yeehaw! this is karlsruhe! But how did it look in 2008?
+For reproducible work, retain:
 
-    osm-history-renderer/renderer/render.py --style osm-mapnik-style/osm.xml --date 2008-10-01 \
-        --bbox 8.3122,48.9731,8.5139,49.0744 --file 2008
+- provider and region page
+- exact filename
+- retrieval timestamp in UTC
+- byte size
+- SHA-256 checksum
+- clipping boundary or `.poly` file when applicable
 
-awesome what we achived in only 3 years!
-But what happend in between? Let's make an animation of that area:
+Do not add the PBF to Git. The repository `.gitignore` excludes `*.pbf` and `*.osh.pbf` as an additional guard.
 
-    osm-history-renderer/renderer/render-animation.py --style osm-mapnik-style/osm.xml --bbox 8.3122,48.9731,8.5139,49.0744
+## 6. Create an empty import database
 
-The script will calculate the first time a node was placed in that area and render one frame per month until today. You can control the start and end-date, the time span between the frames and much, much more using other command-line args. Just check out
+Use a new database. The importer owns its `hist_*` tables; do not point it at a database containing data you need to preserve.
 
-    osm-history-renderer/renderer/render-animation.py -h
+```bash
+createdb osm_history_test
 
-to see the help information explaining various parameters and possibilities.
+psql -X -v ON_ERROR_STOP=1 -d osm_history_test <<'SQL'
+CREATE EXTENSION postgis;
+CREATE EXTENSION hstore;
+CREATE EXTENSION btree_gist;
+SQL
+```
 
-## example rendering
-[this example](http://mazdermind.github.com/osm-history-renderer/karlsruhe.html) example was created using that command-line:
+When PostgreSQL uses a non-default Unix socket or port, add the same `-h` and `-p` values to both commands.
 
-     ./osm-history-renderer/renderer/render-animation.py --style ~/osm-mapnik-style/osm-mapnik2.xml \
-         --bbox 8.3122,48.9731,8.5139,49.0744 --anistart=2006-09-01 --file karlsruhe \
-         --label "%d.%m.%Y" --label-gravity SouthEast
+## 7. Import history
 
-## manual database queries (for statistics and such)
-The [render.py-script](https://github.com/MaZderMind/osm-history-renderer/blob/master/renderer/render.py#L242) creates Database-Views for each slice of time it renders. The View presents to the user (or programm) an osm2pgsql-compatible database layout of osm-objects as they were at thet point in time. You can do this, too, and you can use these views to to statistics and such. The Script generates its views like this:
+Small extracts can use the default nodestore. Use the sparse nodestore for realistic regional history files:
 
-     CREATE OR REPLACE VIEW timeslice_point AS SELECT id AS osm_id, tags->'name' AS name, tags->'amenity' AS amenity,
-        geom AS way FROM hist_point WHERE '2000-01-01' BETWEEN valid_from AND COALESCE(valid_to, '9999-12-31');
-     
-     CREATE OR REPLACE VIEW timeslice_line AS SELECT id AS osm_id, tags->'name' AS name, tags->'amenity' AS amenity,
-        geom AS way FROM hist_line WHERE '2000-01-01' BETWEEN valid_from AND COALESCE(valid_to, '9999-12-31');
-     
-     CREATE OR REPLACE VIEW timeslice_polygon AS SELECT id AS osm_id, tags->'name' AS name, tags->'amenity' AS amenity,
-        geom AS way FROM hist_polygon WHERE '2000-01-01' BETWEEN valid_from AND COALESCE(valid_to, '9999-12-31');
+```bash
+micromamba run -p "$HOME/.local/share/osm-history-geos315" \
+  importer/osm-history-importer \
+  --nodestore sparse \
+  --dsn "host=/path/to/postgres/socket port=5432 dbname=osm_history_test" \
+  /secure/data/region-internal.osh.pbf
+```
 
-These Queries generate three views which represent the state of the osm-database (not considering objects removed or changed because of the licence-change) as it was on 2000-01-01. Of couse you can add more tagsas columns to be pulled out of the tags-hstore.
+The resulting core tables are:
 
-## generating video-sequences
-If you require a video-file, for example to upload it to youtube, you can use ffmpeg to generate an animation from the png-sequence that ```render-animation.py``` generates for you. A good tool for that is [ffmpeg](http://www.ffmpeg.org/). Some example code that could get you started follows, but I'm no specialist in video encoding, so you might [have to google](https://www.google.de/search?q=ffmpeg+from+png+files) for other resources.
+- `hist_point`
+- `hist_line`
+- `hist_polygon`
+- `hist_relation`
+- `hist_relation_member`
+- `hist_user`
 
-     ffmpeg -r 10 -f image2 -i animap/%010d.png -crf 0 lossless-h264.mp4
+`hist_line` and `hist_polygon` contain `minor` versions generated when member-node movement changes a way geometry without a new way version.
 
+## 8. Run the Maldives golden-data gate
 
-## like it?
-If you'd like to support this project, Flatter it:
+Before a large regional import, run the exact Maldives gate. The script refuses arbitrary database names, never drops a database, and retains the result for inspection.
 
-[![Flattr this git repo](http://api.flattr.com/button/flattr-badge-large.png)](https://flattr.com/submit/auto?user_id=MaZderMind&url=https://github.com/MaZderMind/osm-history-renderer&title=osm-history-renderer&language=en_GB&tags=github&category=software) 
+On the verified VM:
 
-## system requirements
-This tutorial was tested on a Debian 6.0.3 i386 box with 1 GB of RAM and a single Core. Rendering was not really fast but it worked.
-Most memory was used while splitting the germany.osh.pbf. It did fill up the whole RAM plus 1/2 of the SWAP but it ran pretty smoothly.
-Take a look at the [Wiki-Page](https://wiki.openstreetmap.org/wiki/OSM_History_Renderer) for some notes about memory usage of different imports.
+```bash
+OSM_HISTORY_TEST_DB=osm_history_geos_upgrade_maldives_315_check \
+MALDIVES_PBF=/absolute/path/to/maldives-internal.osh.pbf \
+scripts/verify-maldives-parity.sh
+```
+
+The run must pass:
+
+1. all six table counts;
+2. all six sorted-table SHA-256 hashes;
+3. geometry type, SRID, null, and validity profiles;
+4. polygon-center values;
+5. line and polygon minor-version metrics.
+
+To recheck a retained database without modifying it:
+
+```bash
+OSM_HISTORY_TEST_DB=osm_history_geos_upgrade_maldives_315_check \
+OSM_HISTORY_REUSE_DB=1 \
+MALDIVES_PBF=/absolute/path/to/maldives-internal.osh.pbf \
+scripts/verify-maldives-parity.sh
+```
+
+Do not proceed to a large-region performance run after a mismatch. Identify the first differing primary key and column first.
+
+## 9. Render one historical instant
+
+The renderer creates temporary osm2pgsql-shaped views named `<view-prefix>_{point,line,roads,polygon}`. PostGIS discovers their geometry metadata automatically; the renderer does not modify the `geometry_columns` view.
+
+```bash
+micromamba run -p "$HOME/.local/share/osm-history-renderer-modern" \
+  osm-history-render \
+  --style /absolute/path/to/style.xml \
+  --db "host=/path/to/postgres/socket port=5432 dbname=osm_history_test" \
+  --dbprefix hist \
+  --view-prefix hist_view \
+  --bbox 73.45,4.10,73.65,4.30 \
+  --date "2025-01-31 00:00:00" \
+  --zoom 12 \
+  --file output/maldives-2025
+```
+
+Output is `output/maldives-2025.png`. The temporary views are removed even if Mapnik raises an error. Add `--retain-views` only when debugging a style.
+
+The legacy entry point has the same arguments:
+
+```bash
+micromamba run -p "$HOME/.local/share/osm-history-renderer-modern" \
+  renderer/render.py --help
+```
+
+## 10. Render an animation
+
+```bash
+micromamba run -p "$HOME/.local/share/osm-history-renderer-modern" \
+  osm-history-render-animation \
+  --style /absolute/path/to/style.xml \
+  --db "host=/path/to/postgres/socket port=5432 dbname=osm_history_test" \
+  --bbox 73.45,4.10,73.65,4.30 \
+  --anistart 2024-01-01 \
+  --aniend 2025-01-01 \
+  --anistep months=+1 \
+  --fps 2 \
+  --label '%Y-%m-%d' \
+  --file output/maldives-history
+```
+
+This creates numbered PNG frames in `output/maldives-history/` and a self-contained `output/maldives-history.html` player. The player uses browser-native JavaScript and makes no jQuery/CDN requests. Labels are drawn with Pillow.
+
+To create a video, run `ffmpeg` separately, for example:
+
+```bash
+ffmpeg -framerate 2 \
+  -i output/maldives-history/%010d.png \
+  -c:v libx264 -pix_fmt yuv420p \
+  output/maldives-history.mp4
+```
+
+## 11. Large-region validation order
+
+Use this order for a Greater London or other large extract:
+
+1. pass the focused C++ GEOS test;
+2. pass the complete Maldives import and exact parity script;
+3. pass all renderer unit and PostGIS integration tests;
+4. record the large extract's provenance and checksum;
+5. import it into a new database;
+6. run bounded geometry/row-count checks before performance measurement;
+7. render a small known bbox/date before starting a full animation;
+8. record wall time, peak RSS, database size, PostgreSQL/PostGIS versions, and command lines.
+
+Large-region timings are performance evidence, not a substitute for the deterministic Maldives parity gate.

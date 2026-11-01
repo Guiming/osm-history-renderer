@@ -8,9 +8,6 @@
 #include <osmium/diff_handler.hpp>
 #include <osmium/osm.hpp>
 
-#include <geos/algorithm/InteriorPointArea.h>
-#include <geos/io/WKBWriter.h>
-
 #include "dbconn.hpp"
 #include "dbcopyconn.hpp"
 
@@ -46,14 +43,12 @@ class ImportHandler : public osmium::diff_handler::DiffHandler {
     DbCopyConn m_relation_member;
     DbCopyConn m_user;
 
-    geos::io::WKBWriter wkb;
-
     std::string m_dsn;
     std::string m_prefix;
-    bool m_debug;
-    bool m_storeerrors;
-    bool m_interior;
-    bool m_keepLatLng;
+    bool m_debug = false;
+    bool m_storeerrors = false;
+    bool m_interior = false;
+    bool m_keepLatLng = false;
 
     std::map<osmium::user_id_type, std::string> m_username_map;
 
@@ -205,7 +200,6 @@ class ImportHandler : public osmium::diff_handler::DiffHandler {
             0 /*minor*/,
             cur.visible(),
             cur.uid(),
-            cur.user(),
             cur.timestamp().seconds_since_epoch(),
             cur.changeset(), //added by GZ
             valid_from,
@@ -236,7 +230,6 @@ class ImportHandler : public osmium::diff_handler::DiffHandler {
 
                 time_t t = (*it).t;
                 osmium::user_id_type uid = (*it).uid;
-                const char* user = m_username_map[ uid ].c_str();
 
                 write_way_to_db(
                     way,
@@ -245,7 +238,6 @@ class ImportHandler : public osmium::diff_handler::DiffHandler {
                     minor,
                     true,
                     uid,
-                    user,
                     t,
                     cur.changeset(), //added by GZ
                     valid_from,
@@ -267,7 +259,6 @@ class ImportHandler : public osmium::diff_handler::DiffHandler {
         osmium::object_version_type minor,
         bool visible,
         osmium::user_id_type user_id,
-        const char* user_name,
         time_t timestamp,
         osmium::changeset_id_type changeset_id,
         time_t valid_from,
@@ -281,7 +272,7 @@ class ImportHandler : public osmium::diff_handler::DiffHandler {
             std::cerr << "forging geometry of way " << id << 'v' << version << '.' << minor << " at tstamp " << timestamp << "\n";
         }
         
-        geos::geom::Geometry* geom = nullptr;
+        GeosContext::Geometry geom;
         
         if (visible) {
             bool looksLikePolygon = PolygonIdentifyer::looksLikePolygon(tags);
@@ -302,7 +293,6 @@ class ImportHandler : public osmium::diff_handler::DiffHandler {
             minor << '\t' <<
             (visible ? 't' : 'f') << '\t' <<
             user_id << '\t' <<
-            //DbCopyConn::escape_string(user_name) << '\t' <<
             changeset_id << '\t' <<
             Timestamp::formatDb(valid_from) << '\t' <<
             Timestamp::formatDb(valid_to) << '\t' <<
@@ -328,7 +318,7 @@ class ImportHandler : public osmium::diff_handler::DiffHandler {
                     return;
                 }
 
-                if (geom->getGeometryTypeId() == geos::geom::GEOS_POLYGON) {
+                if (m_geom.isPolygon(geom)) {
                     line << /*area*/ "0\t" << /* geom */ "\\N\t" << /* center */ "\\N\n";
                     m_polygon.copy(line.str());
                 } else {
@@ -336,28 +326,25 @@ class ImportHandler : public osmium::diff_handler::DiffHandler {
                     m_line.copy(line.str());
                 }
             }
-        } else if (geom->getGeometryTypeId() == geos::geom::GEOS_POLYGON) {
-            const geos::geom::Polygon* poly = dynamic_cast<const geos::geom::Polygon*>(geom);
-
+        } else if (m_geom.isPolygon(geom)) {
             // a polygon, polygon-meta to table
-            line << poly->getArea() << '\t';
+            line << m_geom.area(geom) << '\t';
 
             // write geometry to polygon table
-            wkb.writeHEX(*geom, line);
+            line << m_geom.writeHexEWKB(geom);
             line << '\t';
 
             // calculate interior point
             if (m_interior) {
                 try {
-                    // will leak with invalid geometries on old geos code:
-                    //  http://trac.osgeo.org/geos/ticket/475
-                    geos::geom::Coordinate center;
-                    geos::algorithm::InteriorPointArea interior_calculator(poly);
-                    interior_calculator.getInteriorPoint(center);
-
-                    // write interior point
-                    line << "SRID=3857;POINT(" << center.x << ' ' << center.y << ')';
-                } catch(geos::util::GEOSException e) {
+                    const auto center = m_geom.pointOnSurface(geom);
+                    if (center) {
+                        line << "SRID=3857;POINT(" << center->first << ' '
+                             << center->second << ')';
+                    } else {
+                        line << "\\N";
+                    }
+                } catch(const std::exception& e) {
                     std::cerr << "error calculating interior point: " << e.what() << "\n";
                     line << "\\N";
                 }
@@ -369,12 +356,11 @@ class ImportHandler : public osmium::diff_handler::DiffHandler {
             m_polygon.copy(line.str());
         } else {
             // a linestring, write geometry to line-table
-            wkb.writeHEX(*geom, line);
+            line << m_geom.writeHexEWKB(geom);
 
             line << '\n';
             m_line.copy(line.str());
         }
-        delete geom;
     }
 
     void write_relation(const osmium::DiffRelation& relation) {
@@ -462,7 +448,6 @@ public:
             m_geom(m_store),
             m_mtimes(m_store),
             m_sorttest(),
-            wkb(),
             m_prefix("hist_") {
     }
 
@@ -524,7 +509,6 @@ public:
         m_relation.open(m_dsn, m_prefix, "relation");
         m_relation_member.open(m_dsn, m_prefix, "relation_member");
 
-        wkb.setIncludeSRID(true);
     }
 
     void final() {

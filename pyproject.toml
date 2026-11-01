@@ -1,0 +1,35 @@
+[build-system]
+requires = ["setuptools>=75", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "osm-history-renderer"
+version = "0.1.0"
+description = "Import and render historical OpenStreetMap snapshots"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "mapnik>=4.2,<5",
+    "Pillow>=10",
+    "psycopg>=3.2,<4",
+    "python-dateutil>=2.9",
+]
+
+[project.optional-dependencies]
+test = ["pytest>=8"]
+vector = ["pycairo>=1.25"]
+
+[project.scripts]
+osm-history-render = "osm_history_renderer.render:main"
+osm-history-render-animation = "osm_history_renderer.animation:main"
+
+[tool.setuptools]
+package-dir = {"" = "renderer"}
+
+[tool.setuptools.packages.find]
+where = ["renderer"]
+include = ["osm_history_renderer*"]
+
+[tool.pytest.ini_options]
+testpaths = ["renderer/tests"]
+markers = ["integration: requires the local PostGIS test database"]

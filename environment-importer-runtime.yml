@@ -1,0 +1,11 @@
+channels:
+  - conda-forge
+dependencies:
+  - bzip2
+  - expat
+  - geos=3.15.0
+  - libgcc
+  - libpq
+  - libstdcxx
+  - openssl
+  - zlib
