@@ -110,7 +110,7 @@ END $$;
 /* build polygons from hist_relation and hist_relation_member */
 -- maybe it's better to run the following after all imports are done?
 
-/*
+--/*
 -------------------------------------------
 DROP TABLE IF EXISTS _outer_inner_rings;
 CREATE TABLE _outer_inner_rings AS
@@ -241,4 +241,4 @@ DROP TABLE _outer_inner_rings;
 DELETE 
 FROM hist_polygon_from_relation 
 WHERE geom IS NULL;
-*/
+--*/
