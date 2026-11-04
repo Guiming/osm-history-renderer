@@ -2,7 +2,7 @@
 
 ## Project Lineage
 
-This modernization branch (`modernize-importer-renderer`) advances the importer and renderer in the `osm-history-renderer` lineage, extending compatibility to newer dependency versions while preserving verified functionality. **OSM History Time Machine** uses this branch as a downstream dependency.
+This modernization branch (`modernize-importer-renderer`) advances the importer and renderer in the `osm-history-renderer` lineage, extending compatibility to newer dependency versions while preserving verified functionality. [`osm-history-time-machine`](https://github.com/Guiming/osm-history-time-machine) uses this branch as a downstream dependency.
 
 ### Previous Versions and Repositories
 

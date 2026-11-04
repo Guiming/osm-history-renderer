@@ -1,6 +1,6 @@
 # Contributing to the OpenStreetMap History Importer and Renderer
 
-Thank you for your interest in contributing. This repository modernizes the importer and renderer in the `osm-history-renderer` project lineage. **OSM History Time Machine** is a downstream consumer of this work.
+Thank you for your interest in contributing. This repository modernizes the importer and renderer in the `osm-history-renderer` project lineage. [`osm-history-time-machine`](https://github.com/Guiming/osm-history-time-machine) is a downstream consumer of this work.
 
 ## Project Lineage
 

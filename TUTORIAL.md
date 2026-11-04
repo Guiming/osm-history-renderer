@@ -2,7 +2,7 @@
 
 ## Project Lineage
 
-This guide describes the `modernize-importer-renderer` branch of the `osm-history-renderer` project lineage. It extends compatibility to GEOS **3.15.0**, libosmium **2.23.1**, and Mapnik Python **4.x** and is consumed downstream by **OSM History Time Machine**.
+This guide describes the `modernize-importer-renderer` branch of the `osm-history-renderer` project lineage. It extends compatibility to GEOS **3.15.0**, libosmium **2.23.1**, and Mapnik Python **4.x** and is consumed downstream by [`osm-history-time-machine`](https://github.com/Guiming/osm-history-time-machine).
 
 ### Previous Versions and Repositories
 
