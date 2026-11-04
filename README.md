@@ -2,7 +2,7 @@
 
 ## Project Lineage
 
-This modernization branch (`upgrade/geos-3.15-mapnik-4.3.2`) continues the work of the **OSM History Viewer** project, extending compatibility to newer dependency versions while preserving verified functionality.
+This modernization branch (`modernize-importer-renderer`) continues the work of the **OSM History Viewer** project, extending compatibility to newer dependency versions while preserving verified functionality.
 
 ### Previous Versions and Repositories
 
@@ -10,7 +10,7 @@ This modernization branch (`upgrade/geos-3.15-mapnik-4.3.2`) continues the work 
 - **joto fork**: [`joto/osm-history-renderer`](https://github.com/joto/osm-history-renderer) — A fork of MaZderMind's original implementation with subsequent maintenance and modernization by @joto.
 - **This repo's new-osmium-geos branch**: The previous modernization effort that upgraded GEOS to 3.11, tested with libosmium 2.6+ and newer GEOS versions. See [`Guiming/osm-history-renderer/new-osmium-geos`](https://github.com/Guiming/osm-history-renderer/tree/new-osmium-geos) for the continuation of that work.
 
-This `upgrade/geos-3.15-mapnik-4.3.2` branch further advances compatibility to GEOS **3.15.0**, libosmium **2.23.1**, Mapnik Python **4.x**, and PostgreSQL 18 with PostGIS 3.6, while preserving the verified output of previous versions.
+This `modernize-importer-renderer` branch further advances compatibility to GEOS **3.15.0**, libosmium **2.23.1**, Mapnik Python **4.x**, and PostgreSQL 18 with PostGIS 3.6, while preserving the verified output of previous versions.
 
 ### Repository Layout
 
@@ -158,6 +158,6 @@ The OSM history importer depends on:
 - libosmium **2.23.1**
 - The compiled binary is built from source in `importer/` and installed as `/usr/local/bin/osm-history-import`
 
-See the [`upgrade/geos-3.15-mapnik-4.3.2` modernized branch](https://github.com/Guiming/osm-history-renderer/tree/upgrade/geos-3.15-mapnik-4.3.2) containing this OSM history importer.
+See the [`modernize-importer-renderer` branch](https://github.com/Guiming/osm-history-renderer/tree/modernize-importer-renderer) containing this OSM history importer.
 
 ## Current scope

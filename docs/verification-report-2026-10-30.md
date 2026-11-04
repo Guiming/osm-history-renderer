@@ -1,7 +1,7 @@
 # OSM history importer and renderer modernization verification
 
 Date: 2026-10-30
-Branch: `upgrade/geos-3.15-mapnik-4.3.2`
+Branch: `modernize-importer-renderer`
 Starting commit: `b4afda8`
 Delivery state: verified modernization prepared for publication
 
