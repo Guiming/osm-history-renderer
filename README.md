@@ -2,7 +2,7 @@
 
 ## Project Lineage
 
-This modernization branch (`modernize-importer-renderer`) continues the work of the **OSM History Viewer** project, extending compatibility to newer dependency versions while preserving verified functionality.
+This modernization branch (`modernize-importer-renderer`) advances the importer and renderer in the `osm-history-renderer` lineage, extending compatibility to newer dependency versions while preserving verified functionality. **OSM History Time Machine** uses this branch as a downstream dependency.
 
 ### Previous Versions and Repositories
 
